@@ -1,4 +1,5 @@
 use crate::db::{Database, QueryResult, Schema};
+use crate::state::{SavedTab, StateStore};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -203,9 +204,29 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(db: Database) -> anyhow::Result<Self> {
+    pub fn new(db: Database, state_store: Option<&StateStore>) -> anyhow::Result<Self> {
         let schema = db.load_schema()?;
         let sidebar_items = Self::build_sidebar_items(&schema);
+
+        // Try to load saved state
+        let (tabs, active_tab) = if let Some(store) = state_store {
+            if let Ok(Some((saved_tabs, saved_active))) = store.load_session(&db.path) {
+                let tabs: Vec<EditorTab> = saved_tabs
+                    .into_iter()
+                    .map(|t| {
+                        let mut tab = EditorTab::new(t.name);
+                        tab.set_text(&t.content);
+                        tab
+                    })
+                    .collect();
+                let active = saved_active.min(tabs.len().saturating_sub(1));
+                (tabs, active)
+            } else {
+                (vec![EditorTab::new("Query 1".to_string())], 0)
+            }
+        } else {
+            (vec![EditorTab::new("Query 1".to_string())], 0)
+        };
 
         let mut app = Self {
             db,
@@ -216,8 +237,8 @@ impl App {
             sidebar_items,
             sidebar_selected: 0,
             sidebar_scroll: 0,
-            tabs: vec![EditorTab::new("Query 1".to_string())],
-            active_tab: 0,
+            tabs,
+            active_tab,
             result: None,
             result_page: 0,
             result_scroll: 0,
@@ -235,6 +256,21 @@ impl App {
         }
 
         Ok(app)
+    }
+
+    pub fn save_state(&self, store: &StateStore) -> anyhow::Result<()> {
+        let tabs: Vec<SavedTab> = self
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(i, tab)| SavedTab {
+                name: tab.name.clone(),
+                content: tab.get_text(),
+                position: i as i32,
+            })
+            .collect();
+
+        store.save_session(&self.db.path, &tabs, self.active_tab)
     }
 
     fn build_sidebar_items(schema: &Schema) -> Vec<SidebarItem> {
@@ -341,8 +377,21 @@ impl App {
     pub fn generate_select_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected) {
             if item.section != SidebarSection::Indexes {
-                let query = format!("SELECT * FROM \"{}\" LIMIT 100;", item.name);
-                self.new_tab_with_query(&item.name.clone(), &query);
+                let table_name = &item.name;
+                let columns = self.get_table_columns(table_name);
+                let cols_str = if columns.is_empty() {
+                    "*".to_string()
+                } else {
+                    columns.iter()
+                        .map(|c| format!("    \"{}\"", c))
+                        .collect::<Vec<_>>()
+                        .join(",\n")
+                };
+                let query = format!(
+                    "SELECT\n{}\nFROM \"{}\"\nWHERE 1=1\n    -- AND condition\nLIMIT 100;",
+                    cols_str, table_name
+                );
+                self.new_tab_with_query(&table_name.clone(), &query);
             }
         }
     }
@@ -350,7 +399,10 @@ impl App {
     pub fn generate_count_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected) {
             if item.section != SidebarSection::Indexes {
-                let query = format!("SELECT COUNT(*) FROM \"{}\";", item.name);
+                let query = format!(
+                    "SELECT\n    COUNT(*) as count\nFROM \"{}\"\nWHERE 1=1\n    -- AND condition\n;",
+                    item.name
+                );
                 self.new_tab_with_query(&item.name.clone(), &query);
             }
         }
@@ -359,10 +411,23 @@ impl App {
     pub fn generate_schema_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected) {
             if item.section != SidebarSection::Indexes {
-                let query = format!("PRAGMA table_info(\"{}\");", item.name);
+                let query = format!(
+                    "-- Schema for table: {}\nPRAGMA table_info(\"{}\");",
+                    item.name, item.name
+                );
                 self.new_tab_with_query(&item.name.clone(), &query);
             }
         }
+    }
+
+    fn get_table_columns(&self, table_name: &str) -> Vec<String> {
+        self.schema
+            .tables
+            .iter()
+            .chain(self.schema.views.iter())
+            .find(|t| t.name == table_name)
+            .map(|t| t.columns.iter().map(|c| c.name.clone()).collect())
+            .unwrap_or_default()
     }
 
     fn new_tab_with_query(&mut self, name: &str, query: &str) {

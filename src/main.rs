@@ -2,6 +2,7 @@ mod app;
 mod db;
 mod events;
 mod highlight;
+mod state;
 mod ui;
 
 use anyhow::{Context, Result};
@@ -14,6 +15,7 @@ use crossterm::{
 };
 use db::Database;
 use ratatui::prelude::*;
+use state::StateStore;
 use std::io::stdout;
 use std::time::Duration;
 
@@ -29,12 +31,15 @@ struct Cli {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // Open state store
+    let state_store = StateStore::open().ok();
+
     // Open database
     let db = Database::open(&cli.database)
         .with_context(|| format!("Failed to open database: {}", cli.database))?;
 
-    // Create app
-    let mut app = App::new(db)?;
+    // Create app and restore state
+    let mut app = App::new(db, state_store.as_ref())?;
 
     // Setup terminal
     enable_raw_mode()?;
@@ -46,6 +51,11 @@ fn main() -> Result<()> {
 
     // Run app
     let result = run_app(&mut terminal, &mut app);
+
+    // Save state before exit
+    if let Some(store) = &state_store {
+        let _ = app.save_state(store);
+    }
 
     // Restore terminal
     disable_raw_mode()?;
