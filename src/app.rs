@@ -1,4 +1,5 @@
 use crate::db::{Database, QueryResult, Schema};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Panel {
@@ -194,6 +195,11 @@ pub struct App {
     pub result_selected_col: usize,
     pub page_size: usize,
     pub show_cell_detail: bool,
+
+    // JSON viewer state
+    pub json_expanded: HashSet<String>,
+    pub json_selected: usize,
+    pub json_scroll: usize,
 }
 
 impl App {
@@ -219,6 +225,9 @@ impl App {
             result_selected_col: 0,
             page_size: 100,
             show_cell_detail: false,
+            json_expanded: HashSet::new(),
+            json_selected: 0,
+            json_scroll: 0,
         };
 
         if !app.sidebar_items.is_empty() {
@@ -458,6 +467,14 @@ impl App {
 
     pub fn toggle_cell_detail(&mut self) {
         if self.get_selected_cell().is_some() {
+            if !self.show_cell_detail {
+                // Reset JSON viewer state when opening
+                self.json_expanded.clear();
+                self.json_selected = 0;
+                self.json_scroll = 0;
+                // Expand root by default
+                self.json_expanded.insert("$".to_string());
+            }
             self.show_cell_detail = !self.show_cell_detail;
         }
     }
@@ -466,6 +483,26 @@ impl App {
         if let Some(result) = &self.result {
             let page_rows = self.get_current_page_rows(result);
             self.result_selected_row = page_rows.len().saturating_sub(1);
+        }
+    }
+
+    pub fn json_toggle_expand(&mut self, path: &str) {
+        if self.json_expanded.contains(path) {
+            self.json_expanded.remove(path);
+        } else {
+            self.json_expanded.insert(path.to_string());
+        }
+    }
+
+    pub fn json_move_up(&mut self) {
+        if self.json_selected > 0 {
+            self.json_selected -= 1;
+        }
+    }
+
+    pub fn json_move_down(&mut self, max_lines: usize) {
+        if self.json_selected < max_lines.saturating_sub(1) {
+            self.json_selected += 1;
         }
     }
 }

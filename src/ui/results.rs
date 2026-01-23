@@ -142,20 +142,29 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(paragraph, area);
 }
 
-pub fn render_cell_detail(frame: &mut Frame, app: &App) {
+pub fn render_cell_detail(frame: &mut Frame, app: &mut App) {
     let (col_name, cell_value) = match app.get_selected_cell() {
         Some(v) => v,
         None => return,
     };
 
-    let area = centered_rect(60, 50, frame.area());
+    let area = centered_rect(70, 70, frame.area());
     frame.render_widget(Clear, area);
+
+    // Try to parse as JSON
+    let json_result: Result<serde_json::Value, _> = serde_json::from_str(cell_value);
+
+    let title = if json_result.is_ok() {
+        format!(" {} (JSON) ", col_name)
+    } else {
+        format!(" {} ", col_name)
+    };
 
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
         .title(Span::styled(
-            format!(" {} ", col_name),
+            title,
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
@@ -164,11 +173,272 @@ pub fn render_cell_detail(frame: &mut Frame, app: &App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let content = Paragraph::new(cell_value.to_string())
-        .style(Style::default().fg(Color::White))
-        .wrap(Wrap { trim: false });
+    if let Ok(json) = json_result {
+        render_json_tree(frame, app, inner, &json);
+    } else {
+        let content = Paragraph::new(cell_value.to_string())
+            .style(Style::default().fg(Color::White))
+            .wrap(Wrap { trim: false });
+        frame.render_widget(content, inner);
+    }
+}
 
-    frame.render_widget(content, inner);
+struct JsonLine {
+    path: String,
+    indent: usize,
+    content: String,
+    is_expandable: bool,
+    is_expanded: bool,
+    value_type: JsonValueType,
+}
+
+#[derive(Clone, Copy)]
+enum JsonValueType {
+    Object,
+    Array,
+    String,
+    Number,
+    Bool,
+    Null,
+}
+
+fn render_json_tree(frame: &mut Frame, app: &mut App, area: Rect, json: &serde_json::Value) {
+    let mut lines = Vec::new();
+    build_json_lines(&mut lines, json, "$", 0, &app.json_expanded);
+
+    let visible_height = area.height as usize;
+
+    // Ensure selected line is visible
+    if app.json_selected >= lines.len() {
+        app.json_selected = lines.len().saturating_sub(1);
+    }
+    if app.json_selected < app.json_scroll {
+        app.json_scroll = app.json_selected;
+    } else if app.json_selected >= app.json_scroll + visible_height {
+        app.json_scroll = app.json_selected.saturating_sub(visible_height - 1);
+    }
+
+    let display_lines: Vec<Line> = lines
+        .iter()
+        .enumerate()
+        .skip(app.json_scroll)
+        .take(visible_height)
+        .map(|(i, json_line)| {
+            let is_selected = i == app.json_selected;
+            let indent_str = "  ".repeat(json_line.indent);
+
+            let prefix = if json_line.is_expandable {
+                if json_line.is_expanded { "▾ " } else { "▸ " }
+            } else {
+                "  "
+            };
+
+            let style = if is_selected {
+                Style::default().fg(Color::Black).bg(Color::Cyan)
+            } else {
+                Style::default()
+            };
+
+            let value_style = if is_selected {
+                style
+            } else {
+                match json_line.value_type {
+                    JsonValueType::String => Style::default().fg(Color::Green),
+                    JsonValueType::Number => Style::default().fg(Color::Yellow),
+                    JsonValueType::Bool => Style::default().fg(Color::Magenta),
+                    JsonValueType::Null => Style::default().fg(Color::DarkGray),
+                    JsonValueType::Object | JsonValueType::Array => Style::default().fg(Color::White),
+                }
+            };
+
+            Line::from(vec![
+                Span::styled(indent_str, style),
+                Span::styled(prefix.to_string(), if is_selected { style } else { Style::default().fg(Color::Cyan) }),
+                Span::styled(json_line.content.clone(), value_style),
+            ])
+        })
+        .collect();
+
+    let paragraph = Paragraph::new(display_lines);
+    frame.render_widget(paragraph, area);
+}
+
+fn build_json_lines(
+    lines: &mut Vec<JsonLine>,
+    value: &serde_json::Value,
+    path: &str,
+    indent: usize,
+    expanded: &std::collections::HashSet<String>,
+) {
+    match value {
+        serde_json::Value::Object(map) => {
+            let is_expanded = expanded.contains(path);
+            let count = map.len();
+            if indent == 0 {
+                lines.push(JsonLine {
+                    path: path.to_string(),
+                    indent,
+                    content: format!("{{}} ({} keys)", count),
+                    is_expandable: !map.is_empty(),
+                    is_expanded,
+                    value_type: JsonValueType::Object,
+                });
+            }
+            if is_expanded || indent == 0 {
+                for (key, val) in map {
+                    let child_path = format!("{}.{}", path, key);
+                    let is_child_expandable = matches!(val, serde_json::Value::Object(_) | serde_json::Value::Array(_));
+                    let is_child_expanded = expanded.contains(&child_path);
+
+                    let content = match val {
+                        serde_json::Value::Object(m) => format!("\"{}\": {{}} ({} keys)", key, m.len()),
+                        serde_json::Value::Array(a) => format!("\"{}\": [] ({} items)", key, a.len()),
+                        serde_json::Value::String(s) => format!("\"{}\": \"{}\"", key, truncate_json_string(s, 50)),
+                        serde_json::Value::Number(n) => format!("\"{}\": {}", key, n),
+                        serde_json::Value::Bool(b) => format!("\"{}\": {}", key, b),
+                        serde_json::Value::Null => format!("\"{}\": null", key),
+                    };
+
+                    let value_type = match val {
+                        serde_json::Value::Object(_) => JsonValueType::Object,
+                        serde_json::Value::Array(_) => JsonValueType::Array,
+                        serde_json::Value::String(_) => JsonValueType::String,
+                        serde_json::Value::Number(_) => JsonValueType::Number,
+                        serde_json::Value::Bool(_) => JsonValueType::Bool,
+                        serde_json::Value::Null => JsonValueType::Null,
+                    };
+
+                    lines.push(JsonLine {
+                        path: child_path.clone(),
+                        indent: indent + 1,
+                        content,
+                        is_expandable: is_child_expandable,
+                        is_expanded: is_child_expanded,
+                        value_type,
+                    });
+
+                    if is_child_expanded && is_child_expandable {
+                        build_json_lines(lines, val, &child_path, indent + 1, expanded);
+                    }
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            let is_expanded = expanded.contains(path);
+            let count = arr.len();
+            if indent == 0 {
+                lines.push(JsonLine {
+                    path: path.to_string(),
+                    indent,
+                    content: format!("[] ({} items)", count),
+                    is_expandable: !arr.is_empty(),
+                    is_expanded,
+                    value_type: JsonValueType::Array,
+                });
+            }
+            if is_expanded || indent == 0 {
+                for (i, val) in arr.iter().enumerate() {
+                    let child_path = format!("{}[{}]", path, i);
+                    let is_child_expandable = matches!(val, serde_json::Value::Object(_) | serde_json::Value::Array(_));
+                    let is_child_expanded = expanded.contains(&child_path);
+
+                    let content = match val {
+                        serde_json::Value::Object(m) => format!("[{}]: {{}} ({} keys)", i, m.len()),
+                        serde_json::Value::Array(a) => format!("[{}]: [] ({} items)", i, a.len()),
+                        serde_json::Value::String(s) => format!("[{}]: \"{}\"", i, truncate_json_string(s, 50)),
+                        serde_json::Value::Number(n) => format!("[{}]: {}", i, n),
+                        serde_json::Value::Bool(b) => format!("[{}]: {}", i, b),
+                        serde_json::Value::Null => format!("[{}]: null", i),
+                    };
+
+                    let value_type = match val {
+                        serde_json::Value::Object(_) => JsonValueType::Object,
+                        serde_json::Value::Array(_) => JsonValueType::Array,
+                        serde_json::Value::String(_) => JsonValueType::String,
+                        serde_json::Value::Number(_) => JsonValueType::Number,
+                        serde_json::Value::Bool(_) => JsonValueType::Bool,
+                        serde_json::Value::Null => JsonValueType::Null,
+                    };
+
+                    lines.push(JsonLine {
+                        path: child_path.clone(),
+                        indent: indent + 1,
+                        content,
+                        is_expandable: is_child_expandable,
+                        is_expanded: is_child_expanded,
+                        value_type,
+                    });
+
+                    if is_child_expanded && is_child_expandable {
+                        build_json_lines(lines, val, &child_path, indent + 1, expanded);
+                    }
+                }
+            }
+        }
+        _ => {
+            // Primitive value at root
+            let content = match value {
+                serde_json::Value::String(s) => format!("\"{}\"", s),
+                serde_json::Value::Number(n) => n.to_string(),
+                serde_json::Value::Bool(b) => b.to_string(),
+                serde_json::Value::Null => "null".to_string(),
+                _ => value.to_string(),
+            };
+            let value_type = match value {
+                serde_json::Value::String(_) => JsonValueType::String,
+                serde_json::Value::Number(_) => JsonValueType::Number,
+                serde_json::Value::Bool(_) => JsonValueType::Bool,
+                serde_json::Value::Null => JsonValueType::Null,
+                _ => JsonValueType::Null,
+            };
+            lines.push(JsonLine {
+                path: path.to_string(),
+                indent,
+                content,
+                is_expandable: false,
+                is_expanded: false,
+                value_type,
+            });
+        }
+    }
+}
+
+fn truncate_json_string(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t")
+    } else {
+        format!("{}...", &s[..max_len].replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t"))
+    }
+}
+
+pub fn get_json_line_count(app: &App) -> usize {
+    let cell_value = match app.get_selected_cell() {
+        Some((_, v)) => v,
+        None => return 0,
+    };
+
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(cell_value) {
+        let mut lines = Vec::new();
+        build_json_lines(&mut lines, &json, "$", 0, &app.json_expanded);
+        lines.len()
+    } else {
+        0
+    }
+}
+
+pub fn get_selected_json_path(app: &App) -> Option<String> {
+    let cell_value = match app.get_selected_cell() {
+        Some((_, v)) => v,
+        None => return None,
+    };
+
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(cell_value) {
+        let mut lines = Vec::new();
+        build_json_lines(&mut lines, &json, "$", 0, &app.json_expanded);
+        lines.get(app.json_selected).map(|l| l.path.clone())
+    } else {
+        None
+    }
 }
 
 fn build_row_spans(

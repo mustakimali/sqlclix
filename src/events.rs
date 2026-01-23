@@ -1,4 +1,5 @@
 use crate::app::{App, Panel};
+use crate::ui::results::{get_json_line_count, get_selected_json_path};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use std::time::Duration;
 
@@ -11,6 +12,12 @@ pub fn poll_event(timeout: Duration) -> std::io::Result<Option<Event>> {
 }
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
+    // Handle cell detail / JSON viewer
+    if app.show_cell_detail {
+        handle_cell_detail_key(app, key);
+        return;
+    }
+
     // Global shortcuts (work in any panel)
     match (key.modifiers, key.code) {
         (KeyModifiers::NONE, KeyCode::F(1)) | (KeyModifiers::NONE, KeyCode::Char('?')) => {
@@ -20,10 +27,6 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
             }
         }
         (KeyModifiers::NONE, KeyCode::Esc) => {
-            if app.show_cell_detail {
-                app.show_cell_detail = false;
-                return;
-            }
             if app.show_help {
                 app.show_help = false;
                 return;
@@ -210,6 +213,53 @@ fn handle_results_key(app: &mut App, key: KeyEvent) {
         }
         (KeyModifiers::NONE, KeyCode::End) => {
             app.result_move_to_end();
+        }
+        _ => {}
+    }
+}
+
+fn handle_cell_detail_key(app: &mut App, key: KeyEvent) {
+    let line_count = get_json_line_count(app);
+
+    match (key.modifiers, key.code) {
+        (KeyModifiers::NONE, KeyCode::Esc) | (KeyModifiers::NONE, KeyCode::Char('q')) => {
+            app.show_cell_detail = false;
+        }
+        (KeyModifiers::NONE, KeyCode::Up) | (KeyModifiers::NONE, KeyCode::Char('k')) => {
+            app.json_move_up();
+        }
+        (KeyModifiers::NONE, KeyCode::Down) | (KeyModifiers::NONE, KeyCode::Char('j')) => {
+            app.json_move_down(line_count);
+        }
+        (KeyModifiers::NONE, KeyCode::Enter) | (KeyModifiers::NONE, KeyCode::Right) => {
+            if let Some(path) = get_selected_json_path(app) {
+                app.json_toggle_expand(&path);
+            }
+        }
+        (KeyModifiers::NONE, KeyCode::Left) => {
+            // Collapse current node
+            if let Some(path) = get_selected_json_path(app) {
+                if app.json_expanded.contains(&path) {
+                    app.json_expanded.remove(&path);
+                }
+            }
+        }
+        (KeyModifiers::NONE, KeyCode::PageUp) => {
+            for _ in 0..10 {
+                app.json_move_up();
+            }
+        }
+        (KeyModifiers::NONE, KeyCode::PageDown) => {
+            for _ in 0..10 {
+                app.json_move_down(line_count);
+            }
+        }
+        (KeyModifiers::NONE, KeyCode::Home) => {
+            app.json_selected = 0;
+            app.json_scroll = 0;
+        }
+        (KeyModifiers::NONE, KeyCode::End) => {
+            app.json_selected = line_count.saturating_sub(1);
         }
         _ => {}
     }

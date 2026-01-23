@@ -1,7 +1,7 @@
 mod editor;
 mod help;
 mod layout;
-mod results;
+pub mod results;
 mod sidebar;
 
 pub use layout::render;
