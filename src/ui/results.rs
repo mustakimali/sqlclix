@@ -1,14 +1,14 @@
-use crate::app::App;
-use ratatui::layout::Rect;
+use crate::app::{App, Panel};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
 use unicode_width::UnicodeWidthStr;
 
 const MAX_CELL_WIDTH: usize = 40;
 
-pub fn render(frame: &mut Frame, app: &App, area: Rect) {
+pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let result = match &app.result {
         Some(r) => r,
         None => {
@@ -62,6 +62,8 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
         return;
     }
 
+    let is_focused = app.focus == Panel::Results;
+
     // Calculate column widths
     let available_width = area.width as usize;
     let col_count = result.columns.len();
@@ -93,25 +95,46 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
     let mut lines: Vec<Line> = Vec::new();
     let visible_height = area.height as usize;
+    let visible_data_rows = visible_height.saturating_sub(2); // minus header and separator
+
+    // Calculate scroll offset to keep selected row visible
+    if app.result_selected_row < app.result_scroll {
+        app.result_scroll = app.result_selected_row;
+    } else if app.result_selected_row >= app.result_scroll + visible_data_rows {
+        app.result_scroll = app.result_selected_row.saturating_sub(visible_data_rows - 1);
+    }
 
     // Header
-    let header_spans = build_row_spans(&result.columns, &col_widths, true);
+    let header_spans = build_row_spans(
+        &result.columns,
+        &col_widths,
+        true,
+        None,
+        is_focused.then_some(app.result_selected_col),
+    );
     lines.push(Line::from(header_spans));
 
     // Separator
     let sep = build_separator(&col_widths);
-    lines.push(Line::from(Span::styled(sep, Style::default().fg(Color::DarkGray))));
+    lines.push(Line::from(Span::styled(
+        sep,
+        Style::default().fg(Color::DarkGray),
+    )));
 
-    // Data rows
-    for (i, row) in page_rows.iter().enumerate() {
-        if i < app.result_scroll {
-            continue;
-        }
+    // Data rows (with scroll offset)
+    for (i, row) in page_rows.iter().enumerate().skip(app.result_scroll) {
         if lines.len() >= visible_height {
             break;
         }
 
-        let row_spans = build_row_spans(row, &col_widths, false);
+        let is_selected_row = is_focused && i == app.result_selected_row;
+        let selected_col = if is_selected_row {
+            Some(app.result_selected_col)
+        } else {
+            None
+        };
+
+        let row_spans = build_row_spans(row, &col_widths, false, Some(is_selected_row), selected_col);
         lines.push(Line::from(row_spans));
     }
 
@@ -119,7 +142,42 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(paragraph, area);
 }
 
-fn build_row_spans(cells: &[String], widths: &[usize], is_header: bool) -> Vec<Span<'static>> {
+pub fn render_cell_detail(frame: &mut Frame, app: &App) {
+    let (col_name, cell_value) = match app.get_selected_cell() {
+        Some(v) => v,
+        None => return,
+    };
+
+    let area = centered_rect(60, 50, frame.area());
+    frame.render_widget(Clear, area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan))
+        .title(Span::styled(
+            format!(" {} ", col_name),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let content = Paragraph::new(cell_value.to_string())
+        .style(Style::default().fg(Color::White))
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(content, inner);
+}
+
+fn build_row_spans(
+    cells: &[String],
+    widths: &[usize],
+    is_header: bool,
+    is_selected_row: Option<bool>,
+    selected_col: Option<usize>,
+) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     spans.push(Span::styled("│", Style::default().fg(Color::DarkGray)));
 
@@ -128,10 +186,23 @@ fn build_row_spans(cells: &[String], widths: &[usize], is_header: bool) -> Vec<S
         let truncated = truncate_cell(cell, width);
         let padded = format!(" {:<width$} ", truncated, width = width);
 
-        let style = if is_header {
+        let is_selected_cell = selected_col == Some(i);
+
+        let style = if is_selected_cell && !is_header {
             Style::default()
-                .fg(Color::Cyan)
+                .fg(Color::Black)
+                .bg(Color::Cyan)
                 .add_modifier(Modifier::BOLD)
+        } else if is_header {
+            let mut s = Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD);
+            if is_selected_cell {
+                s = s.add_modifier(Modifier::UNDERLINED);
+            }
+            s
+        } else if is_selected_row == Some(true) {
+            Style::default().fg(Color::White).bg(Color::DarkGray)
         } else if cell == "NULL" {
             Style::default().fg(Color::DarkGray)
         } else {
@@ -177,4 +248,24 @@ fn truncate_cell(s: &str, max_width: usize) -> String {
         result.push('…');
         result
     }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }

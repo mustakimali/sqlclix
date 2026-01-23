@@ -20,6 +20,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
             }
         }
         (KeyModifiers::NONE, KeyCode::Esc) => {
+            if app.show_cell_detail {
+                app.show_cell_detail = false;
+                return;
+            }
             if app.show_help {
                 app.show_help = false;
                 return;
@@ -176,29 +180,36 @@ fn handle_editor_key(app: &mut App, key: KeyEvent) {
 fn handle_results_key(app: &mut App, key: KeyEvent) {
     match (key.modifiers, key.code) {
         (KeyModifiers::NONE, KeyCode::Up) | (KeyModifiers::NONE, KeyCode::Char('k')) => {
-            app.result_scroll_up();
+            app.result_move_up();
         }
         (KeyModifiers::NONE, KeyCode::Down) | (KeyModifiers::NONE, KeyCode::Char('j')) => {
-            app.result_scroll_down();
+            app.result_move_down();
+        }
+        (KeyModifiers::NONE, KeyCode::Left) | (KeyModifiers::NONE, KeyCode::Char('h')) => {
+            app.result_move_left();
+        }
+        (KeyModifiers::NONE, KeyCode::Right) | (KeyModifiers::NONE, KeyCode::Char('l')) => {
+            app.result_move_right();
+        }
+        (KeyModifiers::NONE, KeyCode::Enter) => {
+            app.toggle_cell_detail();
         }
         (KeyModifiers::NONE, KeyCode::PageUp) => {
             for _ in 0..10 {
-                app.result_scroll_up();
+                app.result_move_up();
             }
         }
         (KeyModifiers::NONE, KeyCode::PageDown) => {
             for _ in 0..10 {
-                app.result_scroll_down();
+                app.result_move_down();
             }
         }
         (KeyModifiers::NONE, KeyCode::Home) => {
+            app.result_selected_row = 0;
             app.result_scroll = 0;
         }
-        (KeyModifiers::NONE, KeyCode::Left) => {
-            app.prev_result_page();
-        }
-        (KeyModifiers::NONE, KeyCode::Right) => {
-            app.next_result_page();
+        (KeyModifiers::NONE, KeyCode::End) => {
+            app.result_move_to_end();
         }
         _ => {}
     }

@@ -19,7 +19,7 @@ use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "sqlitex")]
-#[command(author, version, about = "A polished SQLite database browser with TUI interface")]
+#[command(author, version, about = "A SQLite database browser with TUI interface")]
 struct Cli {
     /// Path to the SQLite database file
     #[arg(value_name = "DATABASE")]

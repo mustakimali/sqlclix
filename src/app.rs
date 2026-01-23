@@ -1,4 +1,4 @@
-use crate::db::{Database, QueryResult, Schema, TableInfo};
+use crate::db::{Database, QueryResult, Schema};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Panel {
@@ -190,7 +190,10 @@ pub struct App {
     pub result: Option<QueryResult>,
     pub result_page: usize,
     pub result_scroll: usize,
+    pub result_selected_row: usize,
+    pub result_selected_col: usize,
     pub page_size: usize,
+    pub show_cell_detail: bool,
 }
 
 impl App {
@@ -212,7 +215,10 @@ impl App {
             result: None,
             result_page: 0,
             result_scroll: 0,
+            result_selected_row: 0,
+            result_selected_col: 0,
             page_size: 100,
+            show_cell_detail: false,
         };
 
         if !app.sidebar_items.is_empty() {
@@ -309,6 +315,8 @@ impl App {
         self.result = Some(result);
         self.result_page = 0;
         self.result_scroll = 0;
+        self.result_selected_row = 0;
+        self.result_selected_col = 0;
         self.focus = Panel::Results;
     }
 
@@ -321,24 +329,11 @@ impl App {
         }
     }
 
-    pub fn get_selected_table(&self) -> Option<&TableInfo> {
-        if self.sidebar_selected >= self.sidebar_items.len() {
-            return None;
-        }
-        let item = &self.sidebar_items[self.sidebar_selected];
-        match item.section {
-            SidebarSection::Tables => self.schema.tables.iter().find(|t| t.name == item.name),
-            SidebarSection::Views => self.schema.views.iter().find(|t| t.name == item.name),
-            SidebarSection::Indexes => None,
-        }
-    }
-
     pub fn generate_select_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected) {
             if item.section != SidebarSection::Indexes {
                 let query = format!("SELECT * FROM \"{}\" LIMIT 100;", item.name);
-                self.current_tab_mut().set_text(&query);
-                self.focus = Panel::Editor;
+                self.new_tab_with_query(&item.name.clone(), &query);
             }
         }
     }
@@ -347,8 +342,7 @@ impl App {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected) {
             if item.section != SidebarSection::Indexes {
                 let query = format!("SELECT COUNT(*) FROM \"{}\";", item.name);
-                self.current_tab_mut().set_text(&query);
-                self.focus = Panel::Editor;
+                self.new_tab_with_query(&item.name.clone(), &query);
             }
         }
     }
@@ -357,10 +351,17 @@ impl App {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected) {
             if item.section != SidebarSection::Indexes {
                 let query = format!("PRAGMA table_info(\"{}\");", item.name);
-                self.current_tab_mut().set_text(&query);
-                self.focus = Panel::Editor;
+                self.new_tab_with_query(&item.name.clone(), &query);
             }
         }
+    }
+
+    fn new_tab_with_query(&mut self, name: &str, query: &str) {
+        let mut tab = EditorTab::new(name.to_string());
+        tab.set_text(query);
+        self.tabs.push(tab);
+        self.active_tab = self.tabs.len() - 1;
+        self.focus = Panel::Editor;
     }
 
     pub fn sidebar_up(&mut self) {
@@ -397,21 +398,6 @@ impl App {
         }
     }
 
-    pub fn result_scroll_up(&mut self) {
-        if self.result_scroll > 0 {
-            self.result_scroll -= 1;
-        }
-    }
-
-    pub fn result_scroll_down(&mut self) {
-        if let Some(result) = &self.result {
-            let page_rows = self.get_current_page_rows(result);
-            if self.result_scroll < page_rows.len().saturating_sub(1) {
-                self.result_scroll += 1;
-            }
-        }
-    }
-
     pub fn get_current_page_rows<'a>(&self, result: &'a QueryResult) -> &'a [Vec<String>] {
         let start = self.result_page * self.page_size;
         let end = (start + self.page_size).min(result.rows.len());
@@ -427,5 +413,59 @@ impl App {
         self.sidebar_items = Self::build_sidebar_items(&self.schema);
         self.sidebar_selected = 0;
         Ok(())
+    }
+
+    pub fn result_move_up(&mut self) {
+        if self.result_selected_row > 0 {
+            self.result_selected_row -= 1;
+        }
+    }
+
+    pub fn result_move_down(&mut self) {
+        if let Some(result) = &self.result {
+            let page_rows = self.get_current_page_rows(result);
+            if self.result_selected_row < page_rows.len().saturating_sub(1) {
+                self.result_selected_row += 1;
+            }
+        }
+    }
+
+    pub fn result_move_left(&mut self) {
+        if self.result_selected_col > 0 {
+            self.result_selected_col -= 1;
+        }
+    }
+
+    pub fn result_move_right(&mut self) {
+        if let Some(result) = &self.result {
+            if self.result_selected_col < result.columns.len().saturating_sub(1) {
+                self.result_selected_col += 1;
+            }
+        }
+    }
+
+    pub fn get_selected_cell(&self) -> Option<(&str, &str)> {
+        let result = self.result.as_ref()?;
+        if result.columns.is_empty() || result.rows.is_empty() {
+            return None;
+        }
+        let page_rows = self.get_current_page_rows(result);
+        let row = page_rows.get(self.result_selected_row)?;
+        let col_name = result.columns.get(self.result_selected_col)?;
+        let cell_value = row.get(self.result_selected_col)?;
+        Some((col_name.as_str(), cell_value.as_str()))
+    }
+
+    pub fn toggle_cell_detail(&mut self) {
+        if self.get_selected_cell().is_some() {
+            self.show_cell_detail = !self.show_cell_detail;
+        }
+    }
+
+    pub fn result_move_to_end(&mut self) {
+        if let Some(result) = &self.result {
+            let page_rows = self.get_current_page_rows(result);
+            self.result_selected_row = page_rows.len().saturating_sub(1);
+        }
     }
 }
