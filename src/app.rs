@@ -210,7 +210,7 @@ impl App {
 
         // Try to load saved state
         let (tabs, active_tab) = if let Some(store) = state_store {
-            if let Ok(Some((saved_tabs, saved_active))) = store.load_session(&db.path) {
+            if let Ok(Some((saved_tabs, saved_active))) = store.load_session(&db.path()) {
                 let tabs: Vec<EditorTab> = saved_tabs
                     .into_iter()
                     .map(|t| {
@@ -270,7 +270,7 @@ impl App {
             })
             .collect();
 
-        store.save_session(&self.db.path, &tabs, self.active_tab)
+        store.save_session(&self.db.path(), &tabs, self.active_tab)
     }
 
     fn build_sidebar_items(schema: &Schema) -> Vec<SidebarItem> {

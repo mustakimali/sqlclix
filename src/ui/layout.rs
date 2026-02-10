@@ -31,13 +31,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_title_bar(frame: &mut Frame, app: &App, area: Rect) {
-    let db_name = std::path::Path::new(&app.db.path)
+    let db_name = std::path::Path::new(&app.db.path())
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| app.db.path.clone());
+        .unwrap_or_else(|| app.db.path());
 
     let title = Line::from(vec![
-        Span::styled(" SQLiteX ", Style::default().fg(Color::Cyan)),
+        Span::styled(" SQLClix ", Style::default().fg(Color::Cyan)),
         Span::styled("─ ", Style::default().fg(Color::DarkGray)),
         Span::styled(db_name, Style::default().fg(Color::White)),
         Span::styled(
@@ -46,7 +46,7 @@ fn render_title_bar(frame: &mut Frame, app: &App, area: Rect) {
                 "[?] Help ",
                 width = area.width as usize
                     - 12
-                    - app.db.path.len().min(area.width as usize - 20)
+                    - app.db.path().len().min(area.width as usize - 20)
             ),
             Style::default().fg(Color::DarkGray),
         ),

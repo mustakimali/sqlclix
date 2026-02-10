@@ -1,6 +1,6 @@
-# SQLiteX
+# SQLClix
 
-A simple SQLite database browser with TUI interface.
+A SQL database browser with TUI interface supporting SQLite and PostgreSQL.
 
 ## Install
 
@@ -11,7 +11,11 @@ make publish  # builds and copies to ~/bin/
 ## Usage
 
 ```bash
-sqlitex database.db
+# SQLite
+sqlclix database.db
+
+# PostgreSQL
+sqlclix "postgres://user:password@localhost:5432/dbname"
 ```
 
 ## Keyboard Shortcuts

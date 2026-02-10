@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use std::path::{Path, PathBuf};
 
 pub struct StateStore {
@@ -10,6 +10,7 @@ pub struct StateStore {
 pub struct SavedTab {
     pub name: String,
     pub content: String,
+    #[expect(dead_code)]
     pub position: i32,
 }
 
@@ -57,15 +58,15 @@ impl StateStore {
             .or_else(|| dirs::home_dir().map(|h| h.join(".cache")))
             .context("Could not determine cache directory")?;
 
-        Ok(cache_dir.join("sqlitex").join("state.db"))
+        Ok(cache_dir.join("sqlclix").join("state.db"))
     }
 
     pub fn load_session(&self, db_path: &str) -> Result<Option<(Vec<SavedTab>, usize)>> {
         let canonical_path = Self::canonicalize_path(db_path);
 
-        let mut stmt = self.conn.prepare(
-            "SELECT id, active_tab FROM sessions WHERE db_path = ?",
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, active_tab FROM sessions WHERE db_path = ?")?;
 
         let session: Option<(i64, i32)> = stmt
             .query_row([&canonical_path], |row| Ok((row.get(0)?, row.get(1)?)))
@@ -119,10 +120,8 @@ impl StateStore {
         )?;
 
         // Delete old tabs
-        self.conn.execute(
-            "DELETE FROM tabs WHERE session_id = ?",
-            [session_id],
-        )?;
+        self.conn
+            .execute("DELETE FROM tabs WHERE session_id = ?", [session_id])?;
 
         // Insert new tabs
         let mut stmt = self.conn.prepare(
@@ -137,6 +136,15 @@ impl StateStore {
     }
 
     fn canonicalize_path(path: &str) -> String {
+        // Don't canonicalize PostgreSQL connection strings
+        if path.starts_with("postgres://")
+            || path.starts_with("postgresql://")
+            || path.contains("host=")
+        {
+            return path.to_string();
+        }
+
+        // For file paths, try to canonicalize
         Path::new(path)
             .canonicalize()
             .map(|p| p.to_string_lossy().to_string())

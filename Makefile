@@ -10,8 +10,8 @@ release:
 
 publish: release
 	@mkdir -p ~/bin
-	cp $(TARGET_DIR)/release/sqlitex ~/bin/
-	@echo "Installed sqlitex to ~/bin/sqlitex"
+	cp $(TARGET_DIR)/release/sqlclix ~/bin/
+	@echo "Installed sqlclix to ~/bin/sqlclix"
 
 clean:
 	cargo clean

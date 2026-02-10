@@ -20,10 +20,10 @@ use std::io::stdout;
 use std::time::Duration;
 
 #[derive(Parser)]
-#[command(name = "sqlitex")]
-#[command(author, version, about = "A SQLite database browser with TUI interface")]
+#[command(name = "sqlclix")]
+#[command(author, version, about = "A SQL database browser with TUI interface (SQLite & PostgreSQL)")]
 struct Cli {
-    /// Path to the SQLite database file
+    /// SQLite database file path or PostgreSQL connection string
     #[arg(value_name = "DATABASE")]
     database: String,
 }
