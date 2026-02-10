@@ -23,7 +23,7 @@ sqlclix "postgres://user:password@localhost:5432/dbname"
 | Key | Action |
 |-----|--------|
 | `Tab` | Switch panels |
-| `F5` | Execute query |
+| `F5` / `Ctrl+R` | Execute query |
 | `F2` | New tab |
 | `Ctrl+W` | Close tab |
 | `Enter` | Select/expand table, view cell detail |

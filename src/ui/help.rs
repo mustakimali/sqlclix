@@ -26,7 +26,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
 
     let shortcuts: Vec<(&str, &str, bool)> = vec![
         ("", "Global", true),
-        ("F5 / Ctrl+Enter", "Execute query", false),
+        ("F5 / Ctrl+R / Ctrl+Enter", "Execute query", false),
         ("F2", "New query tab", false),
         ("Ctrl+W", "Close current tab", false),
         ("Alt+← / Alt+→", "Switch tabs", false),

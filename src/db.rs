@@ -354,7 +354,7 @@ impl PostgresDatabase {
         for row in &rows {
             let mut row_data = Vec::new();
             for (i, column) in row.columns().iter().enumerate() {
-                let value = Self::get_column_value(&row, i, column.type_());
+                let value = Self::get_column_value(row, i, column.type_());
                 row_data.push(value);
             }
             result_rows.push(row_data);
@@ -378,41 +378,176 @@ impl PostgresDatabase {
     ) -> String {
         use postgres::types::Type;
 
-        // Try to get the value based on the column type
+        // Macro to try getting a value
+        macro_rules! try_type {
+            ($rust_type:ty) => {
+                if let Ok(Some(v)) = row.try_get::<_, Option<$rust_type>>(idx) {
+                    return v.to_string();
+                } else if let Ok(None) = row.try_get::<_, Option<$rust_type>>(idx) {
+                    return "NULL".to_string();
+                }
+            };
+        }
+
+        // Handle specific PostgreSQL types
         match *col_type {
-            Type::BOOL => row
-                .get::<_, Option<bool>>(idx)
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "NULL".to_string()),
-            Type::INT2 => row
-                .get::<_, Option<i16>>(idx)
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "NULL".to_string()),
-            Type::INT4 => row
-                .get::<_, Option<i32>>(idx)
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "NULL".to_string()),
-            Type::INT8 => row
-                .get::<_, Option<i64>>(idx)
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "NULL".to_string()),
-            Type::FLOAT4 => row
-                .get::<_, Option<f32>>(idx)
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "NULL".to_string()),
-            Type::FLOAT8 => row
-                .get::<_, Option<f64>>(idx)
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "NULL".to_string()),
-            Type::VARCHAR | Type::TEXT | Type::BPCHAR | Type::NAME => row
-                .get::<_, Option<String>>(idx)
-                .unwrap_or_else(|| "NULL".to_string()),
+            // Boolean
+            Type::BOOL => try_type!(bool),
+
+            // Integer types
+            Type::INT2 => try_type!(i16),
+            Type::INT4 => try_type!(i32),
+            Type::INT8 => try_type!(i64),
+
+            // Floating point types
+            Type::FLOAT4 => try_type!(f32),
+            Type::FLOAT8 => try_type!(f64),
+
+            // Character/Text types
+            Type::VARCHAR | Type::TEXT | Type::BPCHAR | Type::NAME | Type::CHAR => {
+                try_type!(String)
+            }
+
+            // Bytea (binary data)
+            Type::BYTEA => {
+                if let Ok(Some(v)) = row.try_get::<_, Option<Vec<u8>>>(idx) {
+                    // Try to parse as UTF-8 string first
+                    if let Ok(s) = String::from_utf8(v.clone()) {
+                        // Try to parse as JSON
+                        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&s) {
+                            // Valid JSON - return it so it can be viewed in JSON viewer
+                            return json_value.to_string();
+                        }
+                        // Valid UTF-8 but not JSON - return as string
+                        return s;
+                    }
+                    // Not valid UTF-8 - show as binary
+                    return format!("[BYTEA {} bytes]", v.len());
+                } else if let Ok(None) = row.try_get::<_, Option<Vec<u8>>>(idx) {
+                    return "NULL".to_string();
+                }
+            }
+
+            // JSON types - display as string
+            Type::JSON | Type::JSONB => {
+                if let Ok(Some(v)) = row.try_get::<_, Option<serde_json::Value>>(idx) {
+                    return v.to_string();
+                } else if let Ok(None) = row.try_get::<_, Option<serde_json::Value>>(idx) {
+                    return "NULL".to_string();
+                }
+            }
+
+            // Date/Time types
+            Type::TIMESTAMP => {
+                // Try NaiveDateTime (timestamp without timezone)
+                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::NaiveDateTime>>(idx) {
+                    return v.format("%Y-%m-%dT%H:%M:%S.%3f").to_string();
+                } else if let Ok(None) = row.try_get::<_, Option<chrono::NaiveDateTime>>(idx) {
+                    return "NULL".to_string();
+                }
+                // Fallback to string
+                try_type!(String)
+            }
+
+            Type::TIMESTAMPTZ => {
+                // Try DateTime<Utc> (timestamp with timezone)
+                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::DateTime<chrono::Utc>>>(idx) {
+                    return v
+                        .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
+                        .to_string();
+                } else if let Ok(None) =
+                    row.try_get::<_, Option<chrono::DateTime<chrono::Utc>>>(idx)
+                {
+                    return "NULL".to_string();
+                }
+                // Fallback to string
+                try_type!(String)
+            }
+
+            Type::DATE => {
+                // Try NaiveDate
+                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::NaiveDate>>(idx) {
+                    return v.format("%Y-%m-%d").to_string();
+                } else if let Ok(None) = row.try_get::<_, Option<chrono::NaiveDate>>(idx) {
+                    return "NULL".to_string();
+                }
+                try_type!(String)
+            }
+
+            Type::TIME | Type::TIMETZ => {
+                // Try NaiveTime
+                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::NaiveTime>>(idx) {
+                    return v.format("%H:%M:%S").to_string();
+                } else if let Ok(None) = row.try_get::<_, Option<chrono::NaiveTime>>(idx) {
+                    return "NULL".to_string();
+                }
+                try_type!(String)
+            }
+
+            // UUID
+            Type::UUID => try_type!(String),
+
+            // Network types
+            Type::INET | Type::CIDR | Type::MACADDR | Type::MACADDR8 => try_type!(String),
+
+            // Geometric types
+            Type::POINT
+            | Type::LINE
+            | Type::LSEG
+            | Type::BOX
+            | Type::PATH
+            | Type::POLYGON
+            | Type::CIRCLE => try_type!(String),
+
+            // Bit string types
+            Type::BIT | Type::VARBIT => try_type!(String),
+
+            // Money
+            Type::MONEY => try_type!(String),
+
+            // OID types
+            Type::OID
+            | Type::REGPROC
+            | Type::REGPROCEDURE
+            | Type::REGOPER
+            | Type::REGOPERATOR
+            | Type::REGCLASS
+            | Type::REGTYPE
+            | Type::REGROLE
+            | Type::REGNAMESPACE
+            | Type::REGCONFIG
+            | Type::REGDICTIONARY => try_type!(i32),
+
+            // Unknown or other types
             _ => {
-                // For other types, try to get as string, fallback to NULL
-                row.get::<_, Option<String>>(idx)
-                    .unwrap_or_else(|| "NULL".to_string())
+                // Try common fallbacks in order
+
+                // 1. Try String (works for many types including arrays, enums, etc.)
+                try_type!(String);
+
+                // 2. Try i64 (numeric types)
+                try_type!(i64);
+
+                // 3. Try f64 (decimal/numeric types)
+                try_type!(f64);
+
+                // 4. Try bool
+                try_type!(bool);
+
+                // 5. Try JSON value (for json/jsonb variants)
+                if let Ok(Some(v)) = row.try_get::<_, Option<serde_json::Value>>(idx) {
+                    return v.to_string();
+                } else if let Ok(None) = row.try_get::<_, Option<serde_json::Value>>(idx) {
+                    return "NULL".to_string();
+                }
+
+                // If nothing works, show unsupported
+                return format!("[{} UNSUPPORTED]", col_type.name());
             }
         }
+
+        // Fallback in case macro doesn't return
+        format!("[{} UNSUPPORTED]", col_type.name())
     }
 }
 

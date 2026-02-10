@@ -42,7 +42,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                 return;
             }
         }
-        (KeyModifiers::NONE, KeyCode::F(5)) | (KeyModifiers::CONTROL, KeyCode::Enter) => {
+        (KeyModifiers::NONE, KeyCode::F(5))
+        | (KeyModifiers::CONTROL, KeyCode::Enter)
+        | (KeyModifiers::CONTROL, KeyCode::Char('r')) => {
             app.execute_query();
             return;
         }
@@ -122,11 +124,10 @@ fn handle_sidebar_key(app: &mut App, key: KeyEvent) {
             }
         }
         (KeyModifiers::NONE, KeyCode::Left) => {
-            if let Some(item) = app.sidebar_items.get(app.sidebar_selected) {
-                if item.is_expanded {
+            if let Some(item) = app.sidebar_items.get(app.sidebar_selected)
+                && item.is_expanded {
                     app.toggle_sidebar_expand();
                 }
-            }
         }
         (KeyModifiers::NONE, KeyCode::Char(' ')) => {
             app.toggle_sidebar_expand();
@@ -238,11 +239,10 @@ fn handle_cell_detail_key(app: &mut App, key: KeyEvent) {
         }
         (KeyModifiers::NONE, KeyCode::Left) => {
             // Collapse current node
-            if let Some(path) = get_selected_json_path(app) {
-                if app.json_expanded.contains(&path) {
+            if let Some(path) = get_selected_json_path(app)
+                && app.json_expanded.contains(&path) {
                     app.json_expanded.remove(&path);
                 }
-            }
         }
         (KeyModifiers::NONE, KeyCode::PageUp) => {
             for _ in 0..10 {
