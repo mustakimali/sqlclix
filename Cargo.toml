@@ -1,9 +1,11 @@
 [package]
 name = "sqlclix"
-version = "0.2.0"
+version = "0.1.0"
 edition = "2024"
 description = "A SQL database browser with TUI interface (SQLite & PostgreSQL)"
-authors = ["Mustakim"]
+authors = ["M Mustakim Ali <i@mustak.im>"]
+license = "MIT"
+repository = "https://github.com/mustakimali/sqlclix"
 
 [dependencies]
 ratatui = "0.29"
