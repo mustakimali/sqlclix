@@ -1,10 +1,10 @@
 use crate::app::{App, Panel};
 use crate::highlight::SqlHighlighter;
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use ratatui::Frame;
 
 pub fn render_tabs(app: &App) -> Line<'static> {
     let mut spans = Vec::new();
@@ -25,10 +25,7 @@ pub fn render_tabs(app: &App) -> Line<'static> {
         spans.push(Span::raw(" "));
     }
 
-    spans.push(Span::styled(
-        "[+]",
-        Style::default().fg(Color::DarkGray),
-    ));
+    spans.push(Span::styled("[+]", Style::default().fg(Color::DarkGray)));
 
     Line::from(spans)
 }
@@ -58,10 +55,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
 
         let line_num = format!("{:>width$} ", i + 1, width = line_num_width);
-        let mut spans = vec![Span::styled(
-            line_num,
-            Style::default().fg(Color::DarkGray),
-        )];
+        let mut spans = vec![Span::styled(line_num, Style::default().fg(Color::DarkGray))];
 
         // Apply syntax highlighting
         let highlighted = highlighter.highlight_line(line_content);
@@ -119,15 +113,16 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             if cursor_col >= line_content.len() {
                 spans.push(Span::styled(
                     " ",
-                    Style::default()
-                        .fg(Color::Black)
-                        .bg(Color::White),
+                    Style::default().fg(Color::Black).bg(Color::White),
                 ));
             }
         } else {
-            spans.extend(highlighted.spans.into_iter().map(|s| {
-                Span::styled(s.content.to_string(), s.style)
-            }));
+            spans.extend(
+                highlighted
+                    .spans
+                    .into_iter()
+                    .map(|s| Span::styled(s.content.to_string(), s.style)),
+            );
         }
 
         lines.push(Line::from(spans));

@@ -1,9 +1,9 @@
 use crate::app::{App, Panel};
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-use ratatui::Frame;
 use unicode_width::UnicodeWidthStr;
 
 const MAX_CELL_WIDTH: usize = 40;
@@ -101,7 +101,9 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     if app.result_selected_row < app.result_scroll {
         app.result_scroll = app.result_selected_row;
     } else if app.result_selected_row >= app.result_scroll + visible_data_rows {
-        app.result_scroll = app.result_selected_row.saturating_sub(visible_data_rows - 1);
+        app.result_scroll = app
+            .result_selected_row
+            .saturating_sub(visible_data_rows - 1);
     }
 
     // Header
@@ -134,7 +136,8 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             None
         };
 
-        let row_spans = build_row_spans(row, &col_widths, false, Some(is_selected_row), selected_col);
+        let row_spans =
+            build_row_spans(row, &col_widths, false, Some(is_selected_row), selected_col);
         lines.push(Line::from(row_spans));
     }
 
@@ -228,7 +231,11 @@ fn render_json_tree(frame: &mut Frame, app: &mut App, area: Rect, json: &serde_j
             let indent_str = "  ".repeat(json_line.indent);
 
             let prefix = if json_line.is_expandable {
-                if json_line.is_expanded { "▾ " } else { "▸ " }
+                if json_line.is_expanded {
+                    "▾ "
+                } else {
+                    "▸ "
+                }
             } else {
                 "  "
             };
@@ -247,13 +254,22 @@ fn render_json_tree(frame: &mut Frame, app: &mut App, area: Rect, json: &serde_j
                     JsonValueType::Number => Style::default().fg(Color::Yellow),
                     JsonValueType::Bool => Style::default().fg(Color::Magenta),
                     JsonValueType::Null => Style::default().fg(Color::DarkGray),
-                    JsonValueType::Object | JsonValueType::Array => Style::default().fg(Color::White),
+                    JsonValueType::Object | JsonValueType::Array => {
+                        Style::default().fg(Color::White)
+                    }
                 }
             };
 
             Line::from(vec![
                 Span::styled(indent_str, style),
-                Span::styled(prefix.to_string(), if is_selected { style } else { Style::default().fg(Color::Cyan) }),
+                Span::styled(
+                    prefix.to_string(),
+                    if is_selected {
+                        style
+                    } else {
+                        Style::default().fg(Color::Cyan)
+                    },
+                ),
                 Span::styled(json_line.content.clone(), value_style),
             ])
         })
@@ -287,13 +303,22 @@ fn build_json_lines(
             if is_expanded || indent == 0 {
                 for (key, val) in map {
                     let child_path = format!("{}.{}", path, key);
-                    let is_child_expandable = matches!(val, serde_json::Value::Object(_) | serde_json::Value::Array(_));
+                    let is_child_expandable = matches!(
+                        val,
+                        serde_json::Value::Object(_) | serde_json::Value::Array(_)
+                    );
                     let is_child_expanded = expanded.contains(&child_path);
 
                     let content = match val {
-                        serde_json::Value::Object(m) => format!("\"{}\": {{}} ({} keys)", key, m.len()),
-                        serde_json::Value::Array(a) => format!("\"{}\": [] ({} items)", key, a.len()),
-                        serde_json::Value::String(s) => format!("\"{}\": \"{}\"", key, truncate_json_string(s, 50)),
+                        serde_json::Value::Object(m) => {
+                            format!("\"{}\": {{}} ({} keys)", key, m.len())
+                        }
+                        serde_json::Value::Array(a) => {
+                            format!("\"{}\": [] ({} items)", key, a.len())
+                        }
+                        serde_json::Value::String(s) => {
+                            format!("\"{}\": \"{}\"", key, truncate_json_string(s, 50))
+                        }
                         serde_json::Value::Number(n) => format!("\"{}\": {}", key, n),
                         serde_json::Value::Bool(b) => format!("\"{}\": {}", key, b),
                         serde_json::Value::Null => format!("\"{}\": null", key),
@@ -339,13 +364,18 @@ fn build_json_lines(
             if is_expanded || indent == 0 {
                 for (i, val) in arr.iter().enumerate() {
                     let child_path = format!("{}[{}]", path, i);
-                    let is_child_expandable = matches!(val, serde_json::Value::Object(_) | serde_json::Value::Array(_));
+                    let is_child_expandable = matches!(
+                        val,
+                        serde_json::Value::Object(_) | serde_json::Value::Array(_)
+                    );
                     let is_child_expanded = expanded.contains(&child_path);
 
                     let content = match val {
                         serde_json::Value::Object(m) => format!("[{}]: {{}} ({} keys)", i, m.len()),
                         serde_json::Value::Array(a) => format!("[{}]: [] ({} items)", i, a.len()),
-                        serde_json::Value::String(s) => format!("[{}]: \"{}\"", i, truncate_json_string(s, 50)),
+                        serde_json::Value::String(s) => {
+                            format!("[{}]: \"{}\"", i, truncate_json_string(s, 50))
+                        }
                         serde_json::Value::Number(n) => format!("[{}]: {}", i, n),
                         serde_json::Value::Bool(b) => format!("[{}]: {}", i, b),
                         serde_json::Value::Null => format!("[{}]: null", i),
@@ -405,9 +435,17 @@ fn build_json_lines(
 
 fn truncate_json_string(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
-        s.replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t")
+        s.replace('\n', "\\n")
+            .replace('\r', "\\r")
+            .replace('\t', "\\t")
     } else {
-        format!("{}...", &s[..max_len].replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t"))
+        format!(
+            "{}...",
+            &s[..max_len]
+                .replace('\n', "\\n")
+                .replace('\r', "\\r")
+                .replace('\t', "\\t")
+        )
     }
 }
 

@@ -11,7 +11,7 @@ use clap::Parser;
 use crossterm::{
     event::Event,
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use db::Database;
 use ratatui::prelude::*;
@@ -21,7 +21,11 @@ use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "sqlclix")]
-#[command(author, version, about = "A SQL database browser with TUI interface (SQLite & PostgreSQL)")]
+#[command(
+    author,
+    version,
+    about = "A SQL database browser with TUI interface (SQLite & PostgreSQL)"
+)]
 struct Cli {
     /// SQLite database file path or PostgreSQL connection string
     #[arg(value_name = "DATABASE")]

@@ -376,45 +376,49 @@ impl App {
 
     pub fn generate_select_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected)
-            && item.section != SidebarSection::Indexes {
-                let table_name = &item.name;
-                let columns = self.get_table_columns(table_name);
-                let cols_str = if columns.is_empty() {
-                    "*".to_string()
-                } else {
-                    columns.iter()
-                        .map(|c| format!("    \"{}\"", c))
-                        .collect::<Vec<_>>()
-                        .join(",\n")
-                };
-                let query = format!(
-                    "SELECT\n{}\nFROM \"{}\"\nWHERE 1=1\n    -- AND condition\nLIMIT 100;",
-                    cols_str, table_name
-                );
-                self.new_tab_with_query(&table_name.clone(), &query);
-            }
+            && item.section != SidebarSection::Indexes
+        {
+            let table_name = &item.name;
+            let columns = self.get_table_columns(table_name);
+            let cols_str = if columns.is_empty() {
+                "*".to_string()
+            } else {
+                columns
+                    .iter()
+                    .map(|c| format!("    \"{}\"", c))
+                    .collect::<Vec<_>>()
+                    .join(",\n")
+            };
+            let query = format!(
+                "SELECT\n{}\nFROM \"{}\"\nWHERE 1=1\n    -- AND condition\nLIMIT 100;",
+                cols_str, table_name
+            );
+            self.new_tab_with_query(&table_name.clone(), &query);
+        }
     }
 
     pub fn generate_count_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected)
-            && item.section != SidebarSection::Indexes {
-                let query = format!(
-                    "SELECT\n    COUNT(*) as count\nFROM \"{}\"\nWHERE 1=1\n    -- AND condition\n;",
-                    item.name
-                );
-                self.new_tab_with_query(&item.name.clone(), &query);
-            }
+            && item.section != SidebarSection::Indexes
+        {
+            let query = format!(
+                "SELECT\n    COUNT(*) as count\nFROM \"{}\"\nWHERE 1=1\n    -- AND condition\n;",
+                item.name
+            );
+            self.new_tab_with_query(&item.name.clone(), &query);
+        }
     }
 
     pub fn generate_schema_query(&mut self) {
         if let Some(item) = self.sidebar_items.get(self.sidebar_selected)
-            && item.section != SidebarSection::Indexes {
-                let query = format!(
-                    "-- Schema for table: {}\nPRAGMA table_info(\"{}\");",
-                    item.name, item.name
-                );
-                self.new_tab_with_query(&item.name.clone(), &query);
-            }
+            && item.section != SidebarSection::Indexes
+        {
+            let query = format!(
+                "-- Schema for table: {}\nPRAGMA table_info(\"{}\");",
+                item.name, item.name
+            );
+            self.new_tab_with_query(&item.name.clone(), &query);
+        }
     }
 
     fn get_table_columns(&self, table_name: &str) -> Vec<String> {
@@ -509,9 +513,10 @@ impl App {
 
     pub fn result_move_right(&mut self) {
         if let Some(result) = &self.result
-            && self.result_selected_col < result.columns.len().saturating_sub(1) {
-                self.result_selected_col += 1;
-            }
+            && self.result_selected_col < result.columns.len().saturating_sub(1)
+        {
+            self.result_selected_col += 1;
+        }
     }
 
     pub fn get_selected_cell(&self) -> Option<(&str, &str)> {

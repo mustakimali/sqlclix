@@ -1,9 +1,9 @@
 use crate::app::App;
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-use ratatui::Frame;
 
 pub fn render(frame: &mut Frame, _app: &App) {
     let area = centered_rect(70, 80, frame.area());
@@ -73,10 +73,7 @@ pub fn render(frame: &mut Frame, _app: &App) {
                 Line::from("")
             } else {
                 Line::from(vec![
-                    Span::styled(
-                        format!("  {:24}", key),
-                        Style::default().fg(Color::Cyan),
-                    ),
+                    Span::styled(format!("  {:24}", key), Style::default().fg(Color::Cyan)),
                     Span::styled(desc.to_string(), Style::default().fg(Color::White)),
                 ])
             }

@@ -1,9 +1,9 @@
 use crate::app::{App, Panel};
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::Frame;
 
 use super::{editor, help, results, sidebar};
 
@@ -44,9 +44,8 @@ fn render_title_bar(frame: &mut Frame, app: &App, area: Rect) {
             format!(
                 "{:>width$}",
                 "[?] Help ",
-                width = area.width as usize
-                    - 12
-                    - app.db.path().len().min(area.width as usize - 20)
+                width =
+                    area.width as usize - 12 - app.db.path().len().min(area.width as usize - 20)
             ),
             Style::default().fg(Color::DarkGray),
         ),

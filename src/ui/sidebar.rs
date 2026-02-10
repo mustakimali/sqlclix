@@ -1,9 +1,9 @@
 use crate::app::{App, SidebarSection};
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
-use ratatui::Frame;
 
 pub fn render(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines: Vec<Line> = Vec::new();
@@ -69,7 +69,10 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
             item.name.clone()
         };
 
-        lines.push(Line::from(Span::styled(format!("{}{}", prefix, name), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{}{}", prefix, name),
+            style,
+        )));
         item_index += 1;
 
         // Expanded children (columns)

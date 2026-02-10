@@ -381,10 +381,10 @@ impl PostgresDatabase {
         // Macro to try getting a value
         macro_rules! try_type {
             ($rust_type:ty) => {
-                if let Ok(Some(v)) = row.try_get::<_, Option<$rust_type>>(idx) {
-                    return v.to_string();
-                } else if let Ok(None) = row.try_get::<_, Option<$rust_type>>(idx) {
-                    return "NULL".to_string();
+                match row.try_get::<_, Option<$rust_type>>(idx) {
+                    Ok(Some(v)) => return v.to_string(),
+                    Ok(None) => return "NULL".to_string(),
+                    _ => (),
                 }
             };
         }
@@ -410,40 +410,40 @@ impl PostgresDatabase {
 
             // Bytea (binary data)
             Type::BYTEA => {
-                if let Ok(Some(v)) = row.try_get::<_, Option<Vec<u8>>>(idx) {
-                    // Try to parse as UTF-8 string first
-                    if let Ok(s) = String::from_utf8(v.clone()) {
-                        // Try to parse as JSON
-                        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&s) {
-                            // Valid JSON - return it so it can be viewed in JSON viewer
-                            return json_value.to_string();
+                match row.try_get::<_, Option<Vec<u8>>>(idx) {
+                    Ok(Some(v)) => {
+                        // Try to parse as UTF-8 string first
+                        if let Ok(s) = String::from_utf8(v.clone()) {
+                            // Try to parse as JSON
+                            if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&s) {
+                                // Valid JSON - return it so it can be viewed in JSON viewer
+                                return json_value.to_string();
+                            }
+                            // Valid UTF-8 but not JSON - return as string
+                            return s;
                         }
-                        // Valid UTF-8 but not JSON - return as string
-                        return s;
+                        // Not valid UTF-8 - show as binary
+                        return format!("[BYTEA {} bytes]", v.len());
                     }
-                    // Not valid UTF-8 - show as binary
-                    return format!("[BYTEA {} bytes]", v.len());
-                } else if let Ok(None) = row.try_get::<_, Option<Vec<u8>>>(idx) {
-                    return "NULL".to_string();
+                    Ok(None) => return "NULL".to_string(),
+                    _ => (),
                 }
             }
 
             // JSON types - display as string
-            Type::JSON | Type::JSONB => {
-                if let Ok(Some(v)) = row.try_get::<_, Option<serde_json::Value>>(idx) {
-                    return v.to_string();
-                } else if let Ok(None) = row.try_get::<_, Option<serde_json::Value>>(idx) {
-                    return "NULL".to_string();
-                }
-            }
+            Type::JSON | Type::JSONB => match row.try_get::<_, Option<serde_json::Value>>(idx) {
+                Ok(Some(v)) => return v.to_string(),
+                Ok(None) => return "NULL".to_string(),
+                _ => (),
+            },
 
             // Date/Time types
             Type::TIMESTAMP => {
                 // Try NaiveDateTime (timestamp without timezone)
-                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::NaiveDateTime>>(idx) {
-                    return v.format("%Y-%m-%dT%H:%M:%S.%3f").to_string();
-                } else if let Ok(None) = row.try_get::<_, Option<chrono::NaiveDateTime>>(idx) {
-                    return "NULL".to_string();
+                match row.try_get::<_, Option<chrono::NaiveDateTime>>(idx) {
+                    Ok(Some(v)) => return v.format("%Y-%m-%dT%H:%M:%S.%3f").to_string(),
+                    Ok(None) => return "NULL".to_string(),
+                    _ => (),
                 }
                 // Fallback to string
                 try_type!(String)
@@ -451,14 +451,14 @@ impl PostgresDatabase {
 
             Type::TIMESTAMPTZ => {
                 // Try DateTime<Utc> (timestamp with timezone)
-                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::DateTime<chrono::Utc>>>(idx) {
-                    return v
-                        .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
-                        .to_string();
-                } else if let Ok(None) =
-                    row.try_get::<_, Option<chrono::DateTime<chrono::Utc>>>(idx)
-                {
-                    return "NULL".to_string();
+                match row.try_get::<_, Option<chrono::DateTime<chrono::Utc>>>(idx) {
+                    Ok(Some(v)) => {
+                        return v
+                            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
+                            .to_string();
+                    }
+                    Ok(None) => return "NULL".to_string(),
+                    _ => (),
                 }
                 // Fallback to string
                 try_type!(String)
@@ -466,20 +466,20 @@ impl PostgresDatabase {
 
             Type::DATE => {
                 // Try NaiveDate
-                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::NaiveDate>>(idx) {
-                    return v.format("%Y-%m-%d").to_string();
-                } else if let Ok(None) = row.try_get::<_, Option<chrono::NaiveDate>>(idx) {
-                    return "NULL".to_string();
+                match row.try_get::<_, Option<chrono::NaiveDate>>(idx) {
+                    Ok(Some(v)) => return v.format("%Y-%m-%d").to_string(),
+                    Ok(None) => return "NULL".to_string(),
+                    _ => (),
                 }
                 try_type!(String)
             }
 
             Type::TIME | Type::TIMETZ => {
                 // Try NaiveTime
-                if let Ok(Some(v)) = row.try_get::<_, Option<chrono::NaiveTime>>(idx) {
-                    return v.format("%H:%M:%S").to_string();
-                } else if let Ok(None) = row.try_get::<_, Option<chrono::NaiveTime>>(idx) {
-                    return "NULL".to_string();
+                match row.try_get::<_, Option<chrono::NaiveTime>>(idx) {
+                    Ok(Some(v)) => return v.format("%H:%M:%S").to_string(),
+                    Ok(None) => return "NULL".to_string(),
+                    _ => (),
                 }
                 try_type!(String)
             }
