@@ -21,7 +21,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     render_main_content(frame, app, chunks[1]);
     render_status_bar(frame, app, chunks[2]);
 
-    if app.show_cell_detail {
+    if app.show_cell_detail || app.show_row_detail {
         results::render_cell_detail(frame, app);
     }
 
@@ -137,7 +137,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
             "↑↓:Navigate  Enter:Select/Expand  s:SELECT  c:COUNT  d:Schema  r:Refresh"
         }
         Panel::Editor => "F5:Run  F2:New Tab  Ctrl+W:Close  Alt+←→:Switch Tab",
-        Panel::Results => "↑↓←→:Navigate  Enter:View  PgUp/Dn:Scroll  Home/End:Jump",
+        Panel::Results => "↑↓←→:Navigate  Enter:View  v:Row  PgUp/Dn:Scroll  Home/End:Jump",
     };
 
     let time_info = match &app.result {

@@ -194,8 +194,11 @@ pub struct App {
     pub result_scroll: usize,
     pub result_selected_row: usize,
     pub result_selected_col: usize,
+    pub result_col_scroll: usize,
     pub page_size: usize,
     pub show_cell_detail: bool,
+    pub show_row_detail: bool,
+    pub row_detail_json: Option<String>,
 
     // JSON viewer state
     pub json_expanded: HashSet<String>,
@@ -244,8 +247,11 @@ impl App {
             result_scroll: 0,
             result_selected_row: 0,
             result_selected_col: 0,
+            result_col_scroll: 0,
             page_size: 100,
             show_cell_detail: false,
+            show_row_detail: false,
+            row_detail_json: None,
             json_expanded: HashSet::new(),
             json_selected: 0,
             json_scroll: 0,
@@ -362,6 +368,7 @@ impl App {
         self.result_scroll = 0;
         self.result_selected_row = 0;
         self.result_selected_col = 0;
+        self.result_col_scroll = 0;
         self.focus = Panel::Results;
     }
 
@@ -543,6 +550,47 @@ impl App {
             }
             self.show_cell_detail = !self.show_cell_detail;
         }
+    }
+
+    pub fn toggle_row_detail(&mut self) {
+        if self.show_row_detail {
+            self.show_row_detail = false;
+            self.row_detail_json = None;
+            return;
+        }
+        let result = match &self.result {
+            Some(r) => r,
+            None => return,
+        };
+        if result.columns.is_empty() || result.rows.is_empty() {
+            return;
+        }
+        let page_rows = self.get_current_page_rows(result);
+        let row = match page_rows.get(self.result_selected_row) {
+            Some(r) => r,
+            None => return,
+        };
+        let mut map = serde_json::Map::new();
+        for (i, col) in result.columns.iter().enumerate() {
+            let value = row.get(i).map(|s| s.as_str()).unwrap_or("NULL");
+            // Try to parse as JSON value, fall back to string
+            let json_val = if value == "NULL" {
+                serde_json::Value::Null
+            } else if let Ok(v) = serde_json::from_str::<serde_json::Value>(value) {
+                v
+            } else {
+                serde_json::Value::String(value.to_string())
+            };
+            map.insert(col.clone(), json_val);
+        }
+        let json_str =
+            serde_json::to_string_pretty(&serde_json::Value::Object(map)).unwrap_or_default();
+        self.row_detail_json = Some(json_str);
+        self.json_expanded.clear();
+        self.json_selected = 0;
+        self.json_scroll = 0;
+        self.json_expanded.insert("$".to_string());
+        self.show_row_detail = true;
     }
 
     pub fn result_move_to_end(&mut self) {

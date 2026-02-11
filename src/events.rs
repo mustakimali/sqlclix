@@ -13,7 +13,7 @@ pub fn poll_event(timeout: Duration) -> std::io::Result<Option<Event>> {
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
     // Handle cell detail / JSON viewer
-    if app.show_cell_detail {
+    if app.show_cell_detail || app.show_row_detail {
         handle_cell_detail_key(app, key);
         return;
     }
@@ -199,6 +199,9 @@ fn handle_results_key(app: &mut App, key: KeyEvent) {
         (KeyModifiers::NONE, KeyCode::Enter) => {
             app.toggle_cell_detail();
         }
+        (KeyModifiers::NONE, KeyCode::Char('v')) => {
+            app.toggle_row_detail();
+        }
         (KeyModifiers::NONE, KeyCode::PageUp) => {
             for _ in 0..10 {
                 app.result_move_up();
@@ -226,6 +229,8 @@ fn handle_cell_detail_key(app: &mut App, key: KeyEvent) {
     match (key.modifiers, key.code) {
         (KeyModifiers::NONE, KeyCode::Esc) | (KeyModifiers::NONE, KeyCode::Char('q')) => {
             app.show_cell_detail = false;
+            app.show_row_detail = false;
+            app.row_detail_json = None;
         }
         (KeyModifiers::NONE, KeyCode::Up) | (KeyModifiers::NONE, KeyCode::Char('k')) => {
             app.json_move_up();

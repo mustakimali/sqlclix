@@ -54,9 +54,11 @@ pub fn render(frame: &mut Frame, _app: &App) {
         ("", "", false),
         ("", "Results Panel", true),
         ("↑ / ↓ / j / k", "Scroll rows", false),
-        ("← / →", "Previous/Next page", false),
+        ("← / → / h / l", "Navigate columns", false),
+        ("Enter", "View cell detail", false),
+        ("v", "View entire row as JSON", false),
         ("PgUp / PgDn", "Scroll by 10 rows", false),
-        ("Home", "Go to first row", false),
+        ("Home / End", "Go to first/last row", false),
     ];
 
     let lines: Vec<Line> = shortcuts

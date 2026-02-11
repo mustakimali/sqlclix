@@ -82,16 +82,47 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     }
 
-    // Add padding and separators
-    let total_width: usize = col_widths.iter().sum::<usize>() + (col_count * 3) + 1;
-
-    // Scale down if needed
-    if total_width > available_width && col_count > 0 {
-        let scale = available_width as f64 / total_width as f64;
-        for w in &mut col_widths {
-            *w = ((*w as f64 * scale) as usize).max(3);
+    // Calculate horizontal scroll to keep selected column visible
+    if app.result_col_scroll > app.result_selected_col {
+        app.result_col_scroll = app.result_selected_col;
+    }
+    // Scroll right if selected column is beyond visible area
+    loop {
+        let mut used = 1usize; // leading border
+        let mut last_visible_col = app.result_col_scroll;
+        for i in app.result_col_scroll..col_count {
+            let col_total = col_widths[i] + 3; // padding + separator
+            if used + col_total > available_width && i > app.result_col_scroll {
+                break;
+            }
+            used += col_total;
+            last_visible_col = i;
+        }
+        if app.result_selected_col <= last_visible_col {
+            break;
+        }
+        app.result_col_scroll += 1;
+        if app.result_col_scroll >= col_count {
+            break;
         }
     }
+
+    // Determine visible column range
+    let col_start = app.result_col_scroll;
+    let mut col_end = col_start;
+    {
+        let mut used = 1usize;
+        for i in col_start..col_count {
+            let col_total = col_widths[i] + 3;
+            if used + col_total > available_width && i > col_start {
+                break;
+            }
+            used += col_total;
+            col_end = i + 1;
+        }
+    }
+
+    let visible_col_widths = &col_widths[col_start..col_end];
 
     let mut lines: Vec<Line> = Vec::new();
     let visible_height = area.height as usize;
@@ -107,17 +138,26 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 
     // Header
+    let visible_columns: Vec<String> = result.columns[col_start..col_end].to_vec();
+    let selected_col_in_view = if is_focused
+        && app.result_selected_col >= col_start
+        && app.result_selected_col < col_end
+    {
+        Some(app.result_selected_col - col_start)
+    } else {
+        None
+    };
     let header_spans = build_row_spans(
-        &result.columns,
-        &col_widths,
+        &visible_columns,
+        visible_col_widths,
         true,
         None,
-        is_focused.then_some(app.result_selected_col),
+        selected_col_in_view,
     );
     lines.push(Line::from(header_spans));
 
     // Separator
-    let sep = build_separator(&col_widths);
+    let sep = build_separator(visible_col_widths);
     lines.push(Line::from(Span::styled(
         sep,
         Style::default().fg(Color::DarkGray),
@@ -131,13 +171,23 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 
         let is_selected_row = is_focused && i == app.result_selected_row;
         let selected_col = if is_selected_row {
-            Some(app.result_selected_col)
+            if app.result_selected_col >= col_start && app.result_selected_col < col_end {
+                Some(app.result_selected_col - col_start)
+            } else {
+                None
+            }
         } else {
             None
         };
 
-        let row_spans =
-            build_row_spans(row, &col_widths, false, Some(is_selected_row), selected_col);
+        let visible_cells: Vec<String> = row[col_start..col_end.min(row.len())].to_vec();
+        let row_spans = build_row_spans(
+            &visible_cells,
+            visible_col_widths,
+            false,
+            Some(is_selected_row),
+            selected_col,
+        );
         lines.push(Line::from(row_spans));
     }
 
@@ -146,22 +196,30 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
 }
 
 pub fn render_cell_detail(frame: &mut Frame, app: &mut App) {
-    let (col_name, cell_value) = match app.get_selected_cell() {
-        Some(v) => v,
-        None => return,
-    };
+    let (title, cell_value_owned);
+
+    if app.show_row_detail {
+        cell_value_owned = match &app.row_detail_json {
+            Some(json) => json.clone(),
+            None => return,
+        };
+        title = " Row Detail ".to_string();
+    } else {
+        let (col_name, cell_value) = match app.get_selected_cell() {
+            Some(v) => v,
+            None => return,
+        };
+        cell_value_owned = cell_value.to_string();
+        let json_result: Result<serde_json::Value, _> = serde_json::from_str(&cell_value_owned);
+        title = if json_result.is_ok() {
+            format!(" {} (JSON) ", col_name)
+        } else {
+            format!(" {} ", col_name)
+        };
+    }
 
     let area = centered_rect(70, 70, frame.area());
     frame.render_widget(Clear, area);
-
-    // Try to parse as JSON
-    let json_result: Result<serde_json::Value, _> = serde_json::from_str(cell_value);
-
-    let title = if json_result.is_ok() {
-        format!(" {} (JSON) ", col_name)
-    } else {
-        format!(" {} ", col_name)
-    };
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -176,10 +234,11 @@ pub fn render_cell_detail(frame: &mut Frame, app: &mut App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
+    let json_result: Result<serde_json::Value, _> = serde_json::from_str(&cell_value_owned);
     if let Ok(json) = json_result {
         render_json_tree(frame, app, inner, &json);
     } else {
-        let content = Paragraph::new(cell_value.to_string())
+        let content = Paragraph::new(cell_value_owned)
             .style(Style::default().fg(Color::White))
             .wrap(Wrap { trim: false });
         frame.render_widget(content, inner);
@@ -449,13 +508,20 @@ fn truncate_json_string(s: &str, max_len: usize) -> String {
     }
 }
 
+fn get_detail_json_str(app: &App) -> Option<String> {
+    if app.show_row_detail {
+        return app.row_detail_json.clone();
+    }
+    app.get_selected_cell().map(|(_, v)| v.to_string())
+}
+
 pub fn get_json_line_count(app: &App) -> usize {
-    let cell_value = match app.get_selected_cell() {
-        Some((_, v)) => v,
+    let cell_value = match get_detail_json_str(app) {
+        Some(v) => v,
         None => return 0,
     };
 
-    if let Ok(json) = serde_json::from_str::<serde_json::Value>(cell_value) {
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cell_value) {
         let mut lines = Vec::new();
         build_json_lines(&mut lines, &json, "$", 0, &app.json_expanded);
         lines.len()
@@ -465,12 +531,9 @@ pub fn get_json_line_count(app: &App) -> usize {
 }
 
 pub fn get_selected_json_path(app: &App) -> Option<String> {
-    let cell_value = match app.get_selected_cell() {
-        Some((_, v)) => v,
-        None => return None,
-    };
+    let cell_value = get_detail_json_str(app)?;
 
-    if let Ok(json) = serde_json::from_str::<serde_json::Value>(cell_value) {
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&cell_value) {
         let mut lines = Vec::new();
         build_json_lines(&mut lines, &json, "$", 0, &app.json_expanded);
         lines.get(app.json_selected).map(|l| l.path.clone())
