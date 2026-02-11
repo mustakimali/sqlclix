@@ -2,6 +2,7 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
 const SQL_KEYWORDS: &[&str] = &[
+    // Standard SQL / shared
     "SELECT",
     "FROM",
     "WHERE",
@@ -112,9 +113,140 @@ const SQL_KEYWORDS: &[&str] = &[
     "CURRENT_DATE",
     "CURRENT_TIME",
     "CURRENT_TIMESTAMP",
+    // PostgreSQL
+    "RETURNING",
+    "ILIKE",
+    "SIMILAR",
+    "LATERAL",
+    "FETCH",
+    "FIRST",
+    "NEXT",
+    "ROWS",
+    "ONLY",
+    "WINDOW",
+    "PARTITION",
+    "OVER",
+    "RANGE",
+    "UNBOUNDED",
+    "PRECEDING",
+    "FOLLOWING",
+    "CURRENT",
+    "EXCLUDE",
+    "TIES",
+    "OTHERS",
+    "NO",
+    "ACTION",
+    "DEFERRABLE",
+    "INITIALLY",
+    "DEFERRED",
+    "IMMEDIATE",
+    "SCHEMA",
+    "DATABASE",
+    "EXTENSION",
+    "SEQUENCE",
+    "TYPE",
+    "ENUM",
+    "DOMAIN",
+    "FUNCTION",
+    "PROCEDURE",
+    "RETURNS",
+    "LANGUAGE",
+    "PLPGSQL",
+    "SQL",
+    "IMMUTABLE",
+    "STABLE",
+    "VOLATILE",
+    "SECURITY",
+    "DEFINER",
+    "INVOKER",
+    "PARALLEL",
+    "SAFE",
+    "UNSAFE",
+    "STRICT",
+    "CALLED",
+    "INPUT",
+    "COST",
+    "GRANT",
+    "REVOKE",
+    "PRIVILEGES",
+    "OWNER",
+    "ROLE",
+    "USER",
+    "PUBLIC",
+    "USAGE",
+    "EXECUTE",
+    "TRUNCATE",
+    "LOCK",
+    "SHARE",
+    "EXCLUSIVE",
+    "ACCESS",
+    "NOWAIT",
+    "SKIP",
+    "LOCKED",
+    "MATERIALIZED",
+    "REFRESH",
+    "CONCURRENTLY",
+    "TABLESPACE",
+    "UNLOGGED",
+    "LOGGED",
+    "INHERIT",
+    "INHERITS",
+    "NOINHERIT",
+    "LOGIN",
+    "NOLOGIN",
+    "SUPERUSER",
+    "NOSUPERUSER",
+    "CREATEROLE",
+    "NOCREATEROLE",
+    "CREATEDB",
+    "NOCREATEDB",
+    "REPLICATION",
+    "CONNECTION",
+    "NOTIFY",
+    "LISTEN",
+    "UNLISTEN",
+    "COPY",
+    "STDIN",
+    "STDOUT",
+    "DELIMITER",
+    "CSV",
+    "HEADER",
+    "QUOTE",
+    "FORCE",
+    "FREEZE",
+    "VERBOSE",
+    "DO",
+    "NOTHING",
+    "GENERATED",
+    "ALWAYS",
+    "IDENTITY",
+    "OVERRIDING",
+    "SYSTEM",
+    "VALUE",
+    "STORED",
+    "INCLUDING",
+    "EXCLUDING",
+    "LIKE",
+    "USING",
+    "CLUSTER",
+    "COMMENT",
+    "DISABLE",
+    "ENABLE",
+    "RULE",
+    "ALSO",
+    "FILTER",
+    "WITHIN",
+    "ORDINALITY",
+    "TABLESAMPLE",
+    "BERNOULLI",
+    "GROUPING",
+    "SETS",
+    "CUBE",
+    "ROLLUP",
 ];
 
 const SQL_FUNCTIONS: &[&str] = &[
+    // Standard / SQLite
     "COUNT",
     "SUM",
     "AVG",
@@ -162,9 +294,183 @@ const SQL_FUNCTIONS: &[&str] = &[
     "JSON_EXTRACT",
     "JSON_TYPE",
     "JSON_VALID",
+    // PostgreSQL functions
+    "NOW",
+    "CURRENT_TIMESTAMP",
+    "CLOCK_TIMESTAMP",
+    "STATEMENT_TIMESTAMP",
+    "TRANSACTION_TIMESTAMP",
+    "TIMEOFDAY",
+    "AGE",
+    "DATE_PART",
+    "DATE_TRUNC",
+    "EXTRACT",
+    "MAKE_DATE",
+    "MAKE_TIME",
+    "MAKE_TIMESTAMP",
+    "MAKE_TIMESTAMPTZ",
+    "MAKE_INTERVAL",
+    "TO_TIMESTAMP",
+    "TO_DATE",
+    "TO_CHAR",
+    "TO_NUMBER",
+    "CONCAT",
+    "CONCAT_WS",
+    "FORMAT",
+    "LEFT",
+    "RIGHT",
+    "REPEAT",
+    "REVERSE",
+    "SPLIT_PART",
+    "TRANSLATE",
+    "INITCAP",
+    "LPAD",
+    "RPAD",
+    "MD5",
+    "ENCODE",
+    "DECODE",
+    "OVERLAY",
+    "POSITION",
+    "BTRIM",
+    "CHR",
+    "ASCII",
+    "REGEXP_MATCH",
+    "REGEXP_MATCHES",
+    "REGEXP_REPLACE",
+    "REGEXP_SPLIT_TO_ARRAY",
+    "REGEXP_SPLIT_TO_TABLE",
+    "STRING_AGG",
+    "ARRAY_AGG",
+    "ARRAY_LENGTH",
+    "ARRAY_LOWER",
+    "ARRAY_UPPER",
+    "ARRAY_DIMS",
+    "ARRAY_POSITION",
+    "ARRAY_POSITIONS",
+    "ARRAY_REMOVE",
+    "ARRAY_REPLACE",
+    "ARRAY_APPEND",
+    "ARRAY_PREPEND",
+    "ARRAY_CAT",
+    "ARRAY_TO_STRING",
+    "STRING_TO_ARRAY",
+    "UNNEST",
+    "CARDINALITY",
+    "GENERATE_SERIES",
+    "GENERATE_SUBSCRIPTS",
+    "ROW_NUMBER",
+    "RANK",
+    "DENSE_RANK",
+    "PERCENT_RANK",
+    "CUME_DIST",
+    "NTILE",
+    "LAG",
+    "LEAD",
+    "FIRST_VALUE",
+    "LAST_VALUE",
+    "NTH_VALUE",
+    "BOOL_AND",
+    "BOOL_OR",
+    "EVERY",
+    "BIT_AND",
+    "BIT_OR",
+    "BIT_XOR",
+    "JSONB_BUILD_OBJECT",
+    "JSONB_BUILD_ARRAY",
+    "JSONB_OBJECT",
+    "JSONB_AGG",
+    "JSONB_ARRAY_ELEMENTS",
+    "JSONB_ARRAY_ELEMENTS_TEXT",
+    "JSONB_EACH",
+    "JSONB_EACH_TEXT",
+    "JSONB_EXTRACT_PATH",
+    "JSONB_EXTRACT_PATH_TEXT",
+    "JSONB_TYPEOF",
+    "JSONB_STRIP_NULLS",
+    "JSONB_SET",
+    "JSONB_INSERT",
+    "JSONB_PRETTY",
+    "JSONB_ARRAY_LENGTH",
+    "JSONB_OBJECT_KEYS",
+    "JSONB_PATH_EXISTS",
+    "JSONB_PATH_QUERY",
+    "JSONB_PATH_QUERY_ARRAY",
+    "JSONB_PATH_QUERY_FIRST",
+    "JSON_BUILD_OBJECT",
+    "JSON_BUILD_ARRAY",
+    "JSON_AGG",
+    "JSON_ARRAY_ELEMENTS",
+    "JSON_ARRAY_ELEMENTS_TEXT",
+    "JSON_EACH",
+    "JSON_EACH_TEXT",
+    "JSON_EXTRACT_PATH",
+    "JSON_EXTRACT_PATH_TEXT",
+    "JSON_TYPEOF",
+    "JSON_STRIP_NULLS",
+    "JSON_ARRAY_LENGTH",
+    "JSON_OBJECT_KEYS",
+    "JSON_POPULATE_RECORD",
+    "JSON_POPULATE_RECORDSET",
+    "JSON_TO_RECORD",
+    "JSON_TO_RECORDSET",
+    "ROW_TO_JSON",
+    "TO_JSON",
+    "TO_JSONB",
+    "GREATEST",
+    "LEAST",
+    "CEIL",
+    "CEILING",
+    "FLOOR",
+    "SIGN",
+    "MOD",
+    "POWER",
+    "SQRT",
+    "CBRT",
+    "LOG",
+    "LN",
+    "EXP",
+    "PI",
+    "DEGREES",
+    "RADIANS",
+    "TRUNC",
+    "WIDTH_BUCKET",
+    "DIV",
+    "GCD",
+    "LCM",
+    "FACTORIAL",
+    "PG_TYPEOF",
+    "PG_COLUMN_SIZE",
+    "PG_SIZE_PRETTY",
+    "PG_TOTAL_RELATION_SIZE",
+    "PG_RELATION_SIZE",
+    "PG_DATABASE_SIZE",
+    "PG_TABLESPACE_SIZE",
+    "CURRENT_SCHEMA",
+    "CURRENT_SCHEMAS",
+    "CURRENT_DATABASE",
+    "CURRENT_USER",
+    "CURRENT_ROLE",
+    "SESSION_USER",
+    "INET_ATON",
+    "INET_NTOA",
+    "HOST",
+    "HOSTMASK",
+    "MASKLEN",
+    "NETMASK",
+    "NETWORK",
+    "SET_MASKLEN",
+    "TEXT",
+    "ABBREV",
+    "BROADCAST",
+    "FAMILY",
+    "GEN_RANDOM_UUID",
+    "UUID_GENERATE_V4",
+    "TXID_CURRENT",
+    "TXID_CURRENT_SNAPSHOT",
 ];
 
 const SQL_TYPES: &[&str] = &[
+    // SQLite / standard
     "INTEGER",
     "INT",
     "TINYINT",
@@ -189,6 +495,60 @@ const SQL_TYPES: &[&str] = &[
     "CHAR",
     "NCHAR",
     "NVARCHAR",
+    // PostgreSQL
+    "SERIAL",
+    "BIGSERIAL",
+    "SMALLSERIAL",
+    "BOOL",
+    "INT4",
+    "FLOAT4",
+    "FLOAT8",
+    "TIMESTAMP",
+    "TIMESTAMPTZ",
+    "INTERVAL",
+    "TIMETZ",
+    "UUID",
+    "JSON",
+    "JSONB",
+    "XML",
+    "BYTEA",
+    "CIDR",
+    "INET",
+    "MACADDR",
+    "MACADDR8",
+    "MONEY",
+    "BIT",
+    "VARBIT",
+    "POINT",
+    "LINE",
+    "LSEG",
+    "BOX",
+    "PATH",
+    "POLYGON",
+    "CIRCLE",
+    "TSQUERY",
+    "TSVECTOR",
+    "OID",
+    "REGCLASS",
+    "REGTYPE",
+    "REGPROC",
+    "RECORD",
+    "VOID",
+    "ARRAY",
+    "HSTORE",
+    "LTREE",
+    "INT4RANGE",
+    "INT8RANGE",
+    "NUMRANGE",
+    "TSRANGE",
+    "TSTZRANGE",
+    "DATERANGE",
+    "INT4MULTIRANGE",
+    "INT8MULTIRANGE",
+    "NUMMULTIRANGE",
+    "TSMULTIRANGE",
+    "TSTZMULTIRANGE",
+    "DATEMULTIRANGE",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -310,6 +670,56 @@ impl SqlHighlighter {
                 continue;
             }
 
+            // PostgreSQL dollar-quoted strings ($$...$$, $tag$...$tag$)
+            if ch == '$'
+                && i + 1 < chars.len()
+                && (chars[i + 1] == '$' || chars[i + 1].is_alphabetic() || chars[i + 1] == '_')
+            {
+                // Find the tag: $$ or $tag$
+                let start = i;
+                i += 1;
+                if chars[i] != '$' {
+                    while i < chars.len() && chars[i] != '$' {
+                        if !chars[i].is_alphanumeric() && chars[i] != '_' {
+                            break;
+                        }
+                        i += 1;
+                    }
+                }
+                if i < chars.len() && chars[i] == '$' {
+                    i += 1;
+                    let tag: String = chars[start..i].iter().collect();
+                    let tag_len = tag.len();
+                    // Find closing tag
+                    let mut found = false;
+                    while i + tag_len <= chars.len() {
+                        let candidate: String = chars[i..i + tag_len].iter().collect();
+                        if candidate == tag {
+                            i += tag_len;
+                            found = true;
+                            break;
+                        }
+                        i += 1;
+                    }
+                    if !found {
+                        i = chars.len();
+                    }
+                    tokens.push(Token {
+                        text: chars[start..i].iter().collect(),
+                        token_type: TokenType::String,
+                    });
+                    continue;
+                }
+                // Not a valid dollar-quote, treat $ as operator
+                i = start;
+                i += 1;
+                tokens.push(Token {
+                    text: "$".to_string(),
+                    token_type: TokenType::Operator,
+                });
+                continue;
+            }
+
             // String literals
             if ch == '\'' || ch == '"' {
                 let quote = ch;
@@ -400,7 +810,7 @@ impl SqlHighlighter {
             // Operators and punctuation
             let op_text = match ch {
                 '(' | ')' | ',' | ';' | '.' | '*' | '+' | '-' | '/' | '%' | '=' | '<' | '>'
-                | '!' | '&' | '|' | '^' | '~' => {
+                | '!' | '&' | '|' | '^' | '~' | ':' | '@' | '?' | '#' => {
                     // Check for multi-char operators
                     if i + 1 < chars.len() {
                         let next = chars[i + 1];
@@ -411,9 +821,35 @@ impl SqlHighlighter {
                             | ('<', '>')
                             | ('|', '|')
                             | ('<', '<')
-                            | ('>', '>') => {
+                            | ('>', '>')
+                            | (':', ':')  // PostgreSQL cast
+                            | ('@', '>')  // PostgreSQL contains
+                            | ('<', '@')  // PostgreSQL contained by
+                            | ('?', '|')  // PostgreSQL jsonb any key
+                            | ('?', '&')  // PostgreSQL jsonb all keys
+                            => {
                                 i += 2;
                                 format!("{}{}", ch, next)
+                            }
+                            ('#', '>') => {
+                                // Could be #> or #>>
+                                if i + 2 < chars.len() && chars[i + 2] == '>' {
+                                    i += 3;
+                                    "#>>".to_string()
+                                } else {
+                                    i += 2;
+                                    "#>".to_string()
+                                }
+                            }
+                            ('-', '>') => {
+                                // Could be -> or ->>
+                                if i + 2 < chars.len() && chars[i + 2] == '>' {
+                                    i += 3;
+                                    "->>".to_string()
+                                } else {
+                                    i += 2;
+                                    "->".to_string()
+                                }
                             }
                             _ => {
                                 i += 1;
