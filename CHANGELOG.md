@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Ci ([#10](https://github.com/mustakimali/sqlclix/pull/10)) (b10f269)
+
+### Fixed
+
 - Editor cursor bug + security ([#6](https://github.com/mustakimali/sqlclix/pull/6)) (6b462b8)
 
 ### Other
