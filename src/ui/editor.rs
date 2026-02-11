@@ -73,7 +73,7 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     // Entire span is before cursor
                     spans.push(Span::styled(span_text, span.style));
                     col += span_len;
-                } else if col >= cursor_col {
+                } else if col > cursor_col {
                     // Entire span is after cursor (cursor already rendered)
                     spans.push(Span::styled(span_text, span.style));
                     col += span_len;

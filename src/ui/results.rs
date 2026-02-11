@@ -90,7 +90,12 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     loop {
         let mut used = 1usize; // leading border
         let mut last_visible_col = app.result_col_scroll;
-        for i in app.result_col_scroll..col_count {
+        for (i, _) in col_widths
+            .iter()
+            .enumerate()
+            .take(col_count)
+            .skip(app.result_col_scroll)
+        {
             let col_total = col_widths[i] + 3; // padding + separator
             if used + col_total > available_width && i > app.result_col_scroll {
                 break;
@@ -112,7 +117,12 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let mut col_end = col_start;
     {
         let mut used = 1usize;
-        for i in col_start..col_count {
+        for (i, _) in col_widths
+            .iter()
+            .enumerate()
+            .take(col_count)
+            .skip(col_start)
+        {
             let col_total = col_widths[i] + 3;
             if used + col_total > available_width && i > col_start {
                 break;
