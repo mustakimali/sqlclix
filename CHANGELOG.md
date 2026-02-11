@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
+- Release v0.1.2 ([#5](https://github.com/mustakimali/sqlclix/pull/5)) (6b311e0)
+- Add rust step (44abd4b)
+
+### Fixed
+
+- Editor cursor bug + security ([#6](https://github.com/mustakimali/sqlclix/pull/6)) (6b462b8)
+
+### Other
+
 - Add rust step (44abd4b)
 - Release v0.1.1 ([#4](https://github.com/mustakimali/sqlclix/pull/4)) (685b9c8)
 
