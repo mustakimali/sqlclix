@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
+- Release v0.1.1 ([#3](https://github.com/mustakimali/sqlclix/pull/3)) (55115e8)
+- Release-plz ([#2](https://github.com/mustakimali/sqlclix/pull/2)) (8234d1e)
+- Release-plz ([#1](https://github.com/mustakimali/sqlclix/pull/1)) (b18fa58)
+- Postgres improvements for highlighter (5038a0e)
+- Enhance README with images for UI examples (c076e9b)
+
+### Added
+
+- Row view (shortcut v) (daea1da)
+
+### Other
+
 - Release-plz ([#2](https://github.com/mustakimali/sqlclix/pull/2)) (8234d1e)
 - Release-plz ([#1](https://github.com/mustakimali/sqlclix/pull/1)) (b18fa58)
 - Postgres improvements for highlighter (5038a0e)
