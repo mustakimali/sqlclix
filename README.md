@@ -2,9 +2,9 @@
 
 A SQL database browser with TUI interface supporting SQLite and PostgreSQL.
 
-<img width="3840" height="2160" alt="Query with multiple tabs" src="https://github.com/user-attachments/assets/fe672c0a-1d28-473e-9d56-defa402180e6" />
+![Query with multiple tabs](https://github.com/user-attachments/assets/fe672c0a-1d28-473e-9d56-defa402180e6)
 
-<img width="3840" height="2160" alt="JSON view" src="https://github.com/user-attachments/assets/b9fc49b8-a331-4d85-9081-d340b596735d" />
+![JSON view](https://github.com/user-attachments/assets/b9fc49b8-a331-4d85-9081-d340b596735d)
 
 ## Install
 
