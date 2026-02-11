@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use rusqlite::{Connection, params};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 pub struct StateStore {
@@ -62,7 +63,7 @@ impl StateStore {
     }
 
     pub fn load_session(&self, db_path: &str) -> Result<Option<(Vec<SavedTab>, usize)>> {
-        let canonical_path = Self::canonicalize_path(db_path);
+        let canonical_path = Self::session_key(db_path);
 
         let mut stmt = self
             .conn
@@ -100,7 +101,7 @@ impl StateStore {
     }
 
     pub fn save_session(&self, db_path: &str, tabs: &[SavedTab], active_tab: usize) -> Result<()> {
-        let canonical_path = Self::canonicalize_path(db_path);
+        let canonical_path = Self::session_key(db_path);
 
         // Upsert session
         self.conn.execute(
@@ -135,19 +136,23 @@ impl StateStore {
         Ok(())
     }
 
-    fn canonicalize_path(path: &str) -> String {
-        // Don't canonicalize PostgreSQL connection strings
-        if path.starts_with("postgres://")
+    fn session_key(path: &str) -> String {
+        // For file paths, canonicalize first to normalize the path
+        let normalized = if path.starts_with("postgres://")
             || path.starts_with("postgresql://")
             || path.contains("host=")
         {
-            return path.to_string();
-        }
+            path.to_string()
+        } else {
+            Path::new(path)
+                .canonicalize()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| path.to_string())
+        };
 
-        // For file paths, try to canonicalize
-        Path::new(path)
-            .canonicalize()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| path.to_string())
+        // Hash the result so connection strings with passwords aren't stored in plaintext
+        let mut hasher = Sha256::new();
+        hasher.update(normalized.as_bytes());
+        format!("{:x}", hasher.finalize())
     }
 }

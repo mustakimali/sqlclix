@@ -31,6 +31,10 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                 app.show_help = false;
                 return;
             }
+            if app.focus != Panel::Editor {
+                app.focus = Panel::Editor;
+                return;
+            }
         }
         (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
             app.running = false;

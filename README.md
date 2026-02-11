@@ -22,6 +22,15 @@ sqlclix database.db
 sqlclix "postgres://user:password@localhost:5432/dbname"
 ```
 
+## Session State
+
+SQLClix saves your tabs and active tab between sessions. State is stored in a SQLite database at:
+
+- **Linux:** `~/.cache/sqlclix/state.db`
+- **macOS:** `~/Library/Caches/sqlclix/state.db`
+
+Database paths are stored as SHA-256 hashes, so connection strings containing credentials are never saved in plaintext.
+
 ## Keyboard Shortcuts
 
 | Key | Action |
