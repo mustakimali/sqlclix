@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Other
+
+- Release v0.1.4 ([#9](https://github.com/mustakimali/sqlclix/pull/9)) (d23a959)
+
 ### Fixed
 
 - Sidebar scroll and results partial column peek (7d9d6c1)
