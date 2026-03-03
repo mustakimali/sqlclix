@@ -131,6 +131,10 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             col_end = i + 1;
         }
     }
+    // Include one extra column as a partial peek so users can see there is more to scroll
+    if col_end < col_count {
+        col_end += 1;
+    }
 
     let visible_col_widths = &col_widths[col_start..col_end];
 

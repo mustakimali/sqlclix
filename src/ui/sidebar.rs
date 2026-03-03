@@ -5,20 +5,12 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-pub fn render(frame: &mut Frame, app: &App, area: Rect) {
+pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let mut lines: Vec<Line> = Vec::new();
     let mut current_section: Option<SidebarSection> = None;
     let mut item_index = 0;
     let visible_height = area.height as usize;
-
-    // Calculate scroll offset to keep selected item visible
-    let scroll_offset = if app.sidebar_selected >= app.sidebar_scroll + visible_height {
-        app.sidebar_selected.saturating_sub(visible_height - 1)
-    } else if app.sidebar_selected < app.sidebar_scroll {
-        app.sidebar_selected
-    } else {
-        app.sidebar_scroll
-    };
+    let mut selected_line: Option<usize> = None;
 
     for (idx, item) in app.sidebar_items.iter().enumerate() {
         // Section header
@@ -46,6 +38,9 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
 
         // Item
         let is_selected = idx == app.sidebar_selected;
+        if is_selected {
+            selected_line = Some(item_index);
+        }
         let prefix = if item.children.is_empty() {
             "  "
         } else if item.is_expanded {
@@ -97,6 +92,15 @@ pub fn render(frame: &mut Frame, app: &App, area: Rect) {
         )));
     }
 
-    let paragraph = Paragraph::new(lines).scroll((scroll_offset as u16, 0));
+    // Update scroll (in line units) to keep selected item visible
+    if let Some(sel_line) = selected_line {
+        if sel_line < app.sidebar_scroll {
+            app.sidebar_scroll = sel_line;
+        } else if sel_line >= app.sidebar_scroll + visible_height {
+            app.sidebar_scroll = sel_line.saturating_sub(visible_height - 1);
+        }
+    }
+
+    let paragraph = Paragraph::new(lines).scroll((app.sidebar_scroll as u16, 0));
     frame.render_widget(paragraph, area);
 }
